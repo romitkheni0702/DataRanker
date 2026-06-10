@@ -342,7 +342,7 @@ function SetupNote() {
 
 // ─── Custom Hook ──────────────────────────────────────────────────────────────
 
-function usePipeline() {
+function usePipeline(columnMapping = {}) {
     const [steps, setSteps] = useState(["idle", "idle", "idle"]);
     const [log, setLog] = useState([]);
     const [running, setRunning] = useState(false);
@@ -374,6 +374,8 @@ function usePipeline() {
         formData.append("query_results", queryFile);
         formData.append("industry_mapping", mappingFile);
         formData.append("kpi_library", kpiFile);
+
+        formData.append('mapping_json', JSON.stringify(columnMapping));
 
         try {
             appendLog("Sending files to pipeline...");
@@ -421,13 +423,13 @@ function usePipeline() {
 
 // ─── Root Component ───────────────────────────────────────────────────────────
 
-export default function Dashboard({ setOutputFile }) {
+export default function Dashboard({ setOutputFile, columnMapping }) {
     const [queryFile, setQueryFile] = useState(null);
     const [mappingFile, setMappingFile] = useState(null);
     const [kpiFile, setKpiFile] = useState(null);
     const navigate = useNavigate();
 
-    const { steps, log, running, resultFile, downloadUrl, error, run } = usePipeline();
+    const { steps, log, running, resultFile, downloadUrl, error, run } = usePipeline(columnMapping);
     useEffect(() => {
         if (resultFile) {
             setOutputFile(resultFile);
