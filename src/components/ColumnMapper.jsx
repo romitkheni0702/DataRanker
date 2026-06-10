@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import './ColumnMapper.css';
-
+import { useNavigate } from 'react-router-dom';
 /**
  * ColumnMapper Component
  * Handles manual mapping of data file columns to KPI metrics
@@ -12,13 +12,14 @@ import './ColumnMapper.css';
  * 4. Sends mapped configuration to backend
  */
 
-const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
+const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING }) => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [availableColumns, setAvailableColumns] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fileDataPreview, setFileDataPreview] = useState([]);
+  const navigate = useNavigate();
 
   /**
    * Handle file upload
@@ -33,19 +34,28 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
 
     try {
       const columns = await extractColumnsFromFile(file);
+      console.log('Extracted columns:', columns);
       setUploadedFile(file);
       setAvailableColumns(columns);
-      
+      console.log('KPI Metrics:', kpiMetrics);
       // Initialize mapping state with empty values
       const initialMapping = {};
-      kpiMetrics.forEach(metric => {
-        initialMapping[metric.id] = '';
+      Object.values(kpiMetrics).forEach(metric => {
+        initialMapping[metric] = '';
       });
       setColumnMapping(initialMapping);
 
       // Get preview data
       const preview = await getFilePreview(file);
-      setFileDataPreview(preview);
+      console.log('File preview data:', preview);
+      if (preview && Array.isArray(preview)) {
+        setFileDataPreview(preview);
+
+        // 2. Use the local 'preview' variable here, NOT the state variable
+        // fileDataPreview.map(row => console.log('Preview row:', row.split(',').map(cell => cell.trim())));
+      } else {
+        console.error("Preview returned null or invalid data");
+      }
     } catch (err) {
       setError(`Error processing file: ${err.message}`);
       console.error('File processing error:', err);
@@ -101,11 +111,11 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
       const workbook = read(buffer);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = utils.sheet_to_json(worksheet);
-      
+
       if (data.length === 0) {
         throw new Error('Excel file is empty');
       }
-      
+
       return Object.keys(data[0]);
     } catch (err) {
       throw new Error(`Failed to read Excel file: ${err.message}`);
@@ -117,7 +127,7 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
    */
   const getFilePreview = async (file) => {
     const extension = file.name.split('.').pop().toLowerCase();
-    
+
     if (extension === 'csv') {
       return await getCSVPreview(file);
     } else if (['xlsx', 'xls'].includes(extension)) {
@@ -168,42 +178,45 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
   /**
    * Validate that all metrics are mapped
    */
-  const validateMapping = () => {
-    const unmappedMetrics = kpiMetrics.filter(metric => !columnMapping[metric.id]);
-    
-    if (unmappedMetrics.length > 0) {
+  const validateMapping = async () => {
+    const mappedMetrics = Object.keys(columnMapping).filter(metric => columnMapping[metric] !== '');
+    console.log('Mapped metrics:', columnMapping);
+
+    if (mappedMetrics.length <= 0) {
       setError(
-        `Please map the following metrics: ${unmappedMetrics.map(m => m.name).join(', ')}`
+        `Please map the following metrics: ${mappedMetrics.map(m => m.name).join(', ')}`
       );
-      return false;
+      return null;
     }
-    return true;
+
+    const mappedData = await mappedMetrics.map(metric => {
+      // if (!availableColumns.includes(columnMapping[metric.id])) {
+      const selectedColumn = columnMapping[metric];
+      return { [selectedColumn]: metric };
+      // }
+    });
+    console.log('Mapped data to submit:', mappedData);
+
+    return mappedData;
   };
 
   /**
    * Submit mapping configuration to parent/backend
    */
   const handleSubmitMapping = async () => {
-    if (!validateMapping()) return;
+
+    const mappedData = await validateMapping();
+    if (mappedData === null) return;
 
     setIsLoading(true);
     try {
-      const mappingConfig = {
-        fileName: uploadedFile.name,
-        timestamp: new Date().toISOString(),
-        mappings: kpiMetrics.map(metric => ({
-          metricId: metric.id,
-          metricName: metric.name,
-          mappedColumn: columnMapping[metric.id],
-          dataType: metric.dataType || 'number'
-        }))
-      };
+      console.log(mappedData);
 
       // Send to backend
-      await sendMappingToBackend(mappingConfig);
-      
+      await sendMappingToBackend(mappedData);
+
       // Notify parent component
-      onMappingComplete(mappingConfig);
+      onMappingComplete(mappedData);
     } catch (err) {
       setError(`Error submitting mapping: ${err.message}`);
     } finally {
@@ -215,19 +228,8 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
    * Send mapping configuration to backend API
    */
   const sendMappingToBackend = async (mappingConfig) => {
-    const response = await fetch('/api/kpi/column-mapping', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(mappingConfig)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend error: ${response.statusText}`);
-    }
-
-    return response.json();
+    setCOLUMN_MAPPING(mappingConfig);
+    navigate('/'); // Redirect to dashboard after successful mapping
   };
 
   /**
@@ -241,10 +243,22 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
     setError(null);
   };
 
+  useEffect(() => {
+    if (fileDataPreview.length > 0) {
+      console.log('Successfully updated fileDataPreview state:', fileDataPreview);
+      // You can now safely trigger your mapping logic or UI updates here
+    }
+  }, [fileDataPreview]);
+
+  // Object.keys(kpiMetrics).forEach(metric => {
+  //   console.log('KPI Metric:', metric);
+  // });
+  // console.log(fileDataPreview);
+
   return (
     <div className="column-mapper">
       <h2>Manual Column Mapping</h2>
-      
+
       {/* File Upload Section */}
       <div className="mapper-section">
         <h3>Step 1: Upload Data File</h3>
@@ -276,7 +290,7 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
           <div className="preview-container">
             {Array.isArray(fileDataPreview[0]) ? (
               <table className="preview-table">
-                <tbody>
+                {/* <tbody>
                   {fileDataPreview.map((row, idx) => (
                     <tr key={idx}>
                       {row.split(',').map((cell, cellIdx) => (
@@ -284,22 +298,26 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
                       ))}
                     </tr>
                   ))}
-                </tbody>
+                </tbody> */}
               </table>
             ) : (
               <table className="preview-table">
                 <thead>
                   <tr>
-                    {Object.keys(fileDataPreview[0] || {}).map(col => (
+                    {fileDataPreview[0].split(',').map(col => (
                       <th key={col}>{col}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {fileDataPreview.map((row, idx) => (
+                  {/* Add .slice(1) to skip the first row (the header) */}
+                  {fileDataPreview.slice(1).map((row, idx) => (
                     <tr key={idx}>
-                      {Object.values(row).map((cell, cellIdx) => (
-                        <td key={cellIdx}>{cell}</td>
+                      {(typeof row === 'string'
+                        ? row.split(',')
+                        : Object.values(row)
+                      ).map((cell, cellIdx) => (
+                        <td key={cellIdx}>{String(cell || '').trim()}</td>
                       ))}
                     </tr>
                   ))}
@@ -317,23 +335,22 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [] }) => {
           <p className="instruction">
             Select the data column for each KPI metric
           </p>
-          
+
           <div className="mapping-grid">
-            {kpiMetrics.map(metric => (
-              <div key={metric.id} className="mapping-row">
+            {availableColumns.map(metric => (
+              <div className="mapping-row">
                 <label className="metric-label">
-                  {metric.name}
-                  <span className="metric-type">({metric.dataType || 'number'})</span>
+                  {metric}
                 </label>
                 <select
-                  value={columnMapping[metric.id] || ''}
-                  onChange={(e) => handleMappingChange(metric.id, e.target.value)}
+                  value={columnMapping[metric] || ''}
+                  onChange={(e) => handleMappingChange(metric, e.target.value)}
                   className={`column-select ${columnMapping[metric.id] ? 'mapped' : 'unmapped'}`}
                 >
                   <option value="">-- Select Column --</option>
-                  {availableColumns.map(column => (
-                    <option key={column} value={column}>
-                      {column}
+                  {Object.keys(kpiMetrics).map(kpi => (
+                    <option key={kpi} value={kpi}>
+                      {kpi}
                     </option>
                   ))}
                 </select>
