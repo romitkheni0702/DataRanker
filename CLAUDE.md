@@ -46,3 +46,25 @@ Three-stage pipeline exposed via `POST /run-pipeline`:
 - `MAPPER_DROP_COLUMNS` — columns dropped after the Stage 2 merge
 - `KPI_SHEET_NAME`, `KPI_HEADER_ROW` — KPI library sheet coordinates
 - Excel cell fill colors for the ranked output
+
+---
+
+## Project rules (MUST follow in every session)
+
+### Team context
+Three members: IT developer (repo creator), CA analyst at hedge fund (non-technical reviewer), and Romit (owner of this Claude instance, product lead). The CA member reviews the software periodically but has no IT setup.
+
+### Core logic — protected
+The business logic (column mapping pipeline, 190-to-130 industry mapping, KPI scoring/weighting, ranking methodology) is proprietary. **Never change core logic without explicit permission from Romit.** If a task would require touching the logic, stop and ask first.
+
+### Trade secret file — LOGIC.md
+`LOGIC.md` lives in the project root. It documents the full business logic and methodology. Rules:
+- **Never commit, push, or make it public by any means.**
+- It is `.gitignored` — verify this before any git operation.
+- Only Romit reads/edits it. It will be improved over time as the logic evolves.
+
+### Documentation discipline
+Document everything as the project grows (for future IT members or other joiners). Keep inline comments minimal but maintain accurate architecture notes in this file and in `LOGIC.md`. No auto-generated docs or README bloat — everything meaningful goes in CLAUDE.md or LOGIC.md.
+
+### Deployment / prototype access
+The CA hedge fund reviewer must be able to access the prototype via a browser URL only — no local installs. Always maintain a cloud-deployable setup so a URL can be shared with non-IT members. See `LOGIC.md` for deployment notes.
