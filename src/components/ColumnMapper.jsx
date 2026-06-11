@@ -1,29 +1,59 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import './ColumnMapper.css';
 import { useNavigate } from 'react-router-dom';
+
 /**
- * ColumnMapper Component
- * Handles manual mapping of data file columns to KPI metrics
+ * ColumnMapper Component - Enhanced with Auto-mapping
  * 
  * Workflow:
  * 1. User uploads CSV/Excel file
- * 2. Component extracts available columns from file
- * 3. User maps each KPI metric to a data column via dropdown
- * 4. Sends mapped configuration to backend
+ * 2. Extract available columns from file
+ * 3. Auto-map columns with EXACT MATCH (case-insensitive) against backend config
+ * 4. User manually maps only unmapped columns
+ * 5. Send final mapping to backend
  */
 
-const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING }) => {
+const ColumnMapper = ({ onMappingComplete, backendConfig = {}, setCOLUMN_MAPPING }) => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [availableColumns, setAvailableColumns] = useState([]);
-  const [columnMapping, setColumnMapping] = useState({});
+  const [autoMappedColumns, setAutoMappedColumns] = useState({}); // { backendMetric: csvColumn }
+  const [unmappedColumns, setUnmappedColumns] = useState([]); // CSV columns not auto-mapped
+  const [manualMappings, setManualMappings] = useState({}); // User manual mappings
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fileDataPreview, setFileDataPreview] = useState([]);
   const navigate = useNavigate();
 
   /**
+   * Auto-map columns using EXACT MATCH (case-insensitive) against backend config
+   */
+  const performAutoMapping = useCallback((csvColumns, configMetrics) => {
+    const mapped = {};
+    const unmapped = [];
+
+    // Create a map of lowercase config metrics for quick lookup
+    const configMetricsMap = {};
+    Object.keys(configMetrics).forEach(metric => {
+      configMetricsMap[metric.toLowerCase()] = metric;
+    });
+
+    csvColumns.forEach(csvCol => {
+      const csvLower = csvCol.toLowerCase().trim();
+
+      // Check for exact match (case-insensitive)
+      if (configMetricsMap[csvLower]) {
+        const exactMetric = configMetricsMap[csvLower];
+        mapped[exactMetric] = csvCol;
+      } else {
+        unmapped.push(csvCol);
+      }
+    });
+
+    return { mapped, unmapped };
+  }, []);
+
+  /**
    * Handle file upload
-   * Extracts columns from CSV/Excel and sets up initial state
    */
   const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
@@ -37,24 +67,20 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
       console.log('Extracted columns:', columns);
       setUploadedFile(file);
       setAvailableColumns(columns);
-      console.log('KPI Metrics:', kpiMetrics);
-      // Initialize mapping state with empty values
-      const initialMapping = {};
-      Object.values(kpiMetrics).forEach(metric => {
-        initialMapping[metric] = '';
-      });
-      setColumnMapping(initialMapping);
+
+      // Perform auto-mapping
+      const { mapped, unmapped } = performAutoMapping(columns, backendConfig);
+      setAutoMappedColumns(mapped);
+      setUnmappedColumns(unmapped);
+      setManualMappings({}); // Reset manual mappings
+
+      console.log('Auto-mapped:', mapped);
+      console.log('Unmapped:', unmapped);
 
       // Get preview data
       const preview = await getFilePreview(file);
-      console.log('File preview data:', preview);
       if (preview && Array.isArray(preview)) {
         setFileDataPreview(preview);
-
-        // 2. Use the local 'preview' variable here, NOT the state variable
-        // fileDataPreview.map(row => console.log('Preview row:', row.split(',').map(cell => cell.trim())));
-      } else {
-        console.error("Preview returned null or invalid data");
       }
     } catch (err) {
       setError(`Error processing file: ${err.message}`);
@@ -62,7 +88,7 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
     } finally {
       setIsLoading(false);
     }
-  }, [kpiMetrics]);
+  }, [backendConfig, performAutoMapping]);
 
   /**
    * Extract columns from CSV or Excel file
@@ -102,7 +128,6 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
 
   /**
    * Extract columns from Excel file
-   * Note: Requires xlsx library - add to package.json
    */
   const extractColumnsFromExcel = async (file) => {
     try {
@@ -166,57 +191,71 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
   };
 
   /**
-   * Handle mapping change for a specific metric
+   * Handle manual mapping for unmapped columns
    */
-  const handleMappingChange = (metricId, columnName) => {
-    setColumnMapping(prev => ({
-      ...prev,
-      [metricId]: columnName
-    }));
-  };
-
-  /**
-   * Validate that all metrics are mapped
-   */
-  const validateMapping = async () => {
-    const mappedMetrics = Object.keys(columnMapping).filter(metric => columnMapping[metric] !== '');
-    console.log('Mapped metrics:', columnMapping);
-
-    if (mappedMetrics.length <= 0) {
-      setError(
-        `Please map the following metrics: ${mappedMetrics.map(m => m.name).join(', ')}`
-      );
-      return null;
+  const handleManualMapping = (csvColumn, backendMetric) => {
+    if (backendMetric === '') {
+      // Remove mapping if empty selected
+      setManualMappings(prev => {
+        const updated = { ...prev };
+        delete updated[csvColumn];
+        return updated;
+      });
+    } else {
+      setManualMappings(prev => ({
+        ...prev,
+        [csvColumn]: backendMetric
+      }));
     }
-
-    const mappedData = await mappedMetrics.map(metric => {
-      // if (!availableColumns.includes(columnMapping[metric.id])) {
-      const selectedColumn = columnMapping[metric];
-      return { [selectedColumn]: metric };
-      // }
-    });
-    console.log('Mapped data to submit:', mappedData);
-
-    return mappedData;
   };
 
   /**
-   * Submit mapping configuration to parent/backend
+   * Combine auto-mapped and manual mappings into final format
+   */
+  const buildFinalMapping = () => {
+    // Convert from { backendMetric: csvColumn } to { csvColumn: backendMetric }
+    const finalMapping = {};
+
+    // Add auto-mapped (reverse the key-value)
+    Object.entries(autoMappedColumns).forEach(([backendMetric, csvColumn]) => {
+      finalMapping[csvColumn] = backendMetric;
+    });
+
+    // Add manual mappings
+    Object.entries(manualMappings).forEach(([csvColumn, backendMetric]) => {
+      finalMapping[csvColumn] = backendMetric;
+    });
+
+    return finalMapping;
+  };
+
+  /**
+   * Validate and submit mapping
    */
   const handleSubmitMapping = async () => {
+    // Check if all unmapped columns have been manually mapped
+    const unmappedStillPending = unmappedColumns.filter(
+      col => !manualMappings[col]
+    );
 
-    const mappedData = await validateMapping();
-    if (mappedData === null) return;
+    if (unmappedStillPending.length > 0) {
+      setError(
+        `Please map these columns: ${unmappedStillPending.join(', ')}`
+      );
+      return;
+    }
 
     setIsLoading(true);
     try {
-      console.log(mappedData);
+      const finalMapping = buildFinalMapping();
+      console.log('Final mapping to submit:', finalMapping);
 
-      // Send to backend
-      await sendMappingToBackend(mappedData);
-
-      // Notify parent component
-      onMappingComplete(mappedData);
+      // Format as array of objects for backend
+      const mappingArray = [finalMapping];
+      setCOLUMN_MAPPING(mappingArray);
+      
+      onMappingComplete(mappingArray);
+      navigate('/'); // Redirect to dashboard
     } catch (err) {
       setError(`Error submitting mapping: ${err.message}`);
     } finally {
@@ -225,39 +264,26 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
   };
 
   /**
-   * Send mapping configuration to backend API
-   */
-  const sendMappingToBackend = async (mappingConfig) => {
-    setCOLUMN_MAPPING(mappingConfig);
-    navigate('/'); // Redirect to dashboard after successful mapping
-  };
-
-  /**
    * Reset all mappings
    */
   const handleReset = () => {
     setUploadedFile(null);
     setAvailableColumns([]);
-    setColumnMapping({});
+    setAutoMappedColumns({});
+    setUnmappedColumns([]);
+    setManualMappings({});
     setFileDataPreview([]);
     setError(null);
   };
 
-  useEffect(() => {
-    if (fileDataPreview.length > 0) {
-      console.log('Successfully updated fileDataPreview state:', fileDataPreview);
-      // You can now safely trigger your mapping logic or UI updates here
-    }
-  }, [fileDataPreview]);
-
-  // Object.keys(kpiMetrics).forEach(metric => {
-  //   console.log('KPI Metric:', metric);
-  // });
-  // console.log(fileDataPreview);
+  const hasAutoMappings = Object.keys(autoMappedColumns).length > 0;
+  const allMapped = unmappedColumns.length === 0 || 
+    unmappedColumns.every(col => manualMappings[col]);
 
   return (
     <div className="column-mapper">
-      <h2>Manual Column Mapping</h2>
+      <h2>🗂️ Column Mapping</h2>
+      <p className="mapper-subtitle">Upload your data file and we'll automatically map your columns to our metrics</p>
 
       {/* File Upload Section */}
       <div className="mapper-section">
@@ -288,75 +314,86 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
         <div className="mapper-section">
           <h3>File Preview</h3>
           <div className="preview-container">
-            {Array.isArray(fileDataPreview[0]) ? (
-              <table className="preview-table">
-                {/* <tbody>
-                  {fileDataPreview.map((row, idx) => (
-                    <tr key={idx}>
-                      {row.split(',').map((cell, cellIdx) => (
-                        <td key={cellIdx}>{cell.trim()}</td>
-                      ))}
-                    </tr>
+            <table className="preview-table">
+              <thead>
+                <tr>
+                  {fileDataPreview[0]?.split(',').map(col => (
+                    <th key={col}>{col}</th>
                   ))}
-                </tbody> */}
-              </table>
-            ) : (
-              <table className="preview-table">
-                <thead>
-                  <tr>
-                    {fileDataPreview[0].split(',').map(col => (
-                      <th key={col}>{col}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fileDataPreview.slice(1).map((row, idx) => (
+                  <tr key={idx}>
+                    {(typeof row === 'string'
+                      ? row.split(',')
+                      : Object.values(row)
+                    ).map((cell, cellIdx) => (
+                      <td key={cellIdx}>{String(cell || '').trim()}</td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {/* Add .slice(1) to skip the first row (the header) */}
-                  {fileDataPreview.slice(1).map((row, idx) => (
-                    <tr key={idx}>
-                      {(typeof row === 'string'
-                        ? row.split(',')
-                        : Object.values(row)
-                      ).map((cell, cellIdx) => (
-                        <td key={cellIdx}>{String(cell || '').trim()}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Column Mapping Section */}
-      {availableColumns.length > 0 && (
-        <div className="mapper-section">
-          <h3>Step 2: Map Columns to KPI Metrics</h3>
-          <p className="instruction">
-            Select the data column for each KPI metric
-          </p>
+      {/* Auto-Mapped Columns */}
+      {hasAutoMappings && (
+        <div className="mapper-section auto-mapped-section">
+          <h3>✅ Auto-Mapped Columns ({Object.keys(autoMappedColumns).length})</h3>
+          <p className="instruction">These columns were automatically matched to your data</p>
+          <div className="auto-mapped-grid">
+            {Object.entries(autoMappedColumns).map(([backendMetric, csvColumn]) => (
+              <div key={backendMetric} className="auto-mapped-item">
+                <div className="auto-mapped-left">
+                  <span className="csv-column">{csvColumn}</span>
+                  <span className="arrow">→</span>
+                  <span className="backend-metric">{backendMetric}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-          <div className="mapping-grid">
-            {availableColumns.map(metric => (
-              <div className="mapping-row">
-                <label className="metric-label">
-                  {metric}
-                </label>
+      {/* Manual Mapping for Unmapped Columns */}
+      {unmappedColumns.length > 0 && (
+        <div className="mapper-section manual-mapping-section">
+          <h3>⚠️ Unmapped Columns ({unmappedColumns.length})</h3>
+          <p className="instruction">Please map these columns to available metrics</p>
+          <div className="manual-mapping-grid">
+            {unmappedColumns.map(csvColumn => (
+              <div key={csvColumn} className="manual-mapping-row">
+                <label className="csv-column-label">{csvColumn}</label>
                 <select
-                  value={columnMapping[metric] || ''}
-                  onChange={(e) => handleMappingChange(metric, e.target.value)}
-                  className={`column-select ${columnMapping[metric.id] ? 'mapped' : 'unmapped'}`}
+                  value={manualMappings[csvColumn] || ''}
+                  onChange={(e) => handleManualMapping(csvColumn, e.target.value)}
+                  className={`column-select ${
+                    manualMappings[csvColumn] ? 'mapped' : 'unmapped'
+                  }`}
                 >
-                  <option value="">-- Select Column --</option>
-                  {Object.keys(kpiMetrics).map(kpi => (
-                    <option key={kpi} value={kpi}>
-                      {kpi}
+                  <option value="">-- Select Metric --</option>
+                  {Object.keys(backendConfig).map(metric => (
+                    <option key={metric} value={metric}>
+                      {metric}
                     </option>
                   ))}
+                  <option value="skip" disabled>
+                    -- Skip Column --
+                  </option>
                 </select>
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {availableColumns.length > 0 && unmappedColumns.length === 0 && (
+        <div className="success-message">
+          ✨ All columns auto-mapped! Ready to proceed.
         </div>
       )}
 
@@ -366,16 +403,17 @@ const ColumnMapper = ({ onMappingComplete, kpiMetrics = [], setCOLUMN_MAPPING })
           <button
             className="btn btn-primary"
             onClick={handleSubmitMapping}
-            disabled={isLoading || availableColumns.length === 0}
+            disabled={isLoading || !allMapped}
+            title={!allMapped ? 'Please map all unmapped columns' : ''}
           >
-            {isLoading ? 'Processing...' : 'Confirm Mapping'}
+            {isLoading ? 'Processing...' : '✓ Confirm Mapping'}
           </button>
           <button
             className="btn btn-secondary"
             onClick={handleReset}
             disabled={isLoading}
           >
-            Reset
+            ↺ Reset
           </button>
         </div>
       )}
