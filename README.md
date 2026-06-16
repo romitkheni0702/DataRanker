@@ -22,22 +22,23 @@ DataRanker/
 │   ├── src/api.js              # API base (REACT_APP_API_URL) + fetch helper
 │   ├── src/auth.js            # JWT auth client (httpOnly cookie)
 │   ├── src/App.js             # Router + global state
-│   ├── src/Dashboard.js       # Upload UI + pipeline runner
+│   ├── src/Dashboard.js       # Upload UI + pipeline runner (2 files; KPIs come from DB)
 │   ├── src/StockDashboard.jsx # Results viewer (charts, table)
-│   ├── src/KPILibraryEditor.js# Edit/export the KPI library (Tier 1)
+│   ├── src/KPILibraryEditor.js# Edit/save the per-user KPI library (Tier 1) via API
 │   ├── src/theme/             # Design tokens (CSS vars) + light/dark ThemeContext
 │   ├── src/pages/             # Landing, Pricing, About, Login, Signup
 │   └── src/components/        # AppShell, ColumnMapper, MarketingNav/Footer, ThemeToggle …
 └── server/                     # Express + MongoDB backend
     ├── server.js              # Entry: env, DB, CORS, routes
     ├── config/db.js           # Mongoose connection
-    ├── models/User.js         # User + subscription plan
+    ├── models/                # User.js, KpiLibrary.js (per-user Tier 1 KPIs)
     ├── middleware/auth.js     # JWT cookie helpers + requireAuth
     ├── controllers/authController.js
-    ├── routes/                # auth.js, plans.js, pipeline.js
-    ├── core/config.js         # COLUMN_MAPPING, KPI config, output colors
+    ├── routes/                # auth.js, plans.js, pipeline.js, kpiLibrary.js
+    ├── core/config.js         # COLUMN_MAPPING (aliases), KPI config, output colors
+    ├── core/kpiDefaults.js    # Default Tier 1 KPI rows seeded for new users
     ├── core/plans.js          # Subscription tiers (Free / Premium / Enterprise)
-    ├── services/              # formatter.js, mapper.js, ranker.js (the pipeline)
+    ├── services/              # formatter.js, mapper.js, ranker.js (pipeline) + kpiLibrary.js
     └── lib/                   # rank.js, io.js (pandas-equivalent helpers)
 ```
 
@@ -89,17 +90,21 @@ Secrets live in gitignored `.env` files (commit only the `.env.example` template
 | GET    | `/auth/me`        | ✓    | Current user                              |
 | POST   | `/auth/logout`    | —    | Clear cookie                              |
 | GET    | `/plans`          | —    | Subscription tiers                        |
-| GET    | `/column-mapping` | —    | Canonical CSV→output column mapping       |
-| POST   | `/run-pipeline`   | ✓    | Run pipeline, return `Final_Ranked_Report.xlsx` |
+| GET    | `/column-mapping` | —    | Canonical output→source column mapping (each value is an array of accepted aliases) |
+| GET    | `/kpi-library`    | ✓    | Current user's Tier 1 KPIs (seeds defaults on first call) |
+| PUT    | `/kpi-library`    | ✓    | Save the user's Tier 1 KPIs               |
+| POST   | `/run-pipeline`   | ✓    | Run pipeline (2 uploaded files; KPIs from DB), return `Final_Ranked_Report.xlsx` |
 
 ## Usage
 
 1. **(Optional) Map columns** — `/app/column-mapper`: upload your CSV, confirm the auto-detected
-   mapping, save.
-2. **Run the pipeline** — `/app`: upload Query Results (`.csv`), Industry Mapping (`.xlsx` with an
-   `Industry Mapping` sheet) and KPI Library (`.xlsx`, `Tier1` sheet), then **Run Full Pipeline** and
-   download the report.
-3. **Explore** — `/app/results` for the interactive dashboard; `/app/kpi-editor` to edit the KPI library.
+   mapping (a column matches any of its configured aliases), save.
+2. **Set up KPIs** — `/app/kpi-editor`: every account starts with a default Tier 1 KPI library
+   (seeded from the canonical set); edit and **Save** it. No KPI file upload needed.
+3. **Run the pipeline** — `/app`: upload Query Results (`.csv`) and Industry Mapping (`.xlsx` with an
+   `Industry Mapping` sheet), then **Run Full Pipeline** and download the report. Scoring uses your
+   saved KPI library.
+4. **Explore** — `/app/results` for the interactive dashboard.
 
 ## KPI scoring logic
 
