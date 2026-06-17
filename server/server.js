@@ -4,6 +4,24 @@
 
 require("dotenv").config();
 
+// Fail-fast on missing secrets: the app must never run without a JWT secret.
+if (!process.env.JWT_SECRET) {
+  console.error(
+    "FATAL: JWT_SECRET is not set. Refusing to start. " +
+      "Set JWT_SECRET in your environment (see .env.example)."
+  );
+  process.exit(1);
+}
+
+// In non-production, auth cookies are not Secure / SameSite=None, so cross-site
+// login only works over http/localhost. Warn once (not fatal).
+if (process.env.NODE_ENV !== "production") {
+  console.warn(
+    "WARNING: NODE_ENV is not 'production'. Auth cookies are NOT Secure / " +
+      "SameSite=None — cross-site login will only work over http/localhost."
+  );
+}
+
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -36,6 +54,14 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Minimal, dependency-free security headers on every response.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 

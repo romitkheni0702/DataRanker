@@ -298,78 +298,20 @@ function TemplateCard({ templateName, rows, onUpdate, onAddKPI, onRemoveKPI, AVA
   );
 }
 
-// ── Tier2 read-only card ──────────────────────────────────────────────────────
-function Tier2Card({ templateName, rows }) {
-  const [expanded, setExpanded] = useState(false);
-  const total = totalWeight(rows);
-  return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", marginBottom: 12, background: "var(--card)" }}>
-      <div onClick={() => setExpanded((p) => !p)} style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 16px", cursor: "pointer", background: "var(--card)", userSelect: "none",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{templateName}</span>
-          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{rows.length} KPIs</span>
-          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(245,158,11,0.12)", color: "#F59E0B", fontWeight: 600 }}>
-            Read-only
-          </span>
-        </div>
-        <div style={{ flex: 1, maxWidth: 260 }}><WeightBar used={total} /></div>
-        <span style={{ marginLeft: 12, color: "var(--text-secondary)", fontSize: 12 }}>{expanded ? "▲" : "▼"}</span>
-      </div>
-      {expanded && (
-        <div style={{ padding: "12px 16px 16px" }}>
-          {rows.map((row) => {
-            const color = CATEGORY_COLORS[row.category] || "var(--text-secondary)";
-            return (
-              <div key={row.kpi} style={{
-                display: "grid", gridTemplateColumns: "1fr 100px 90px",
-                alignItems: "center", gap: 10, padding: "8px 12px",
-                borderRadius: 8, background: "var(--inset)", border: "1px solid var(--elevated)", marginBottom: 6,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-secondary)" }}>{row.kpi}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: color + "20", color, textTransform: "uppercase" }}>{row.category}</span>
-                </div>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--text-secondary)", textAlign: "right" }}>{row.weight}%</span>
-                <span style={{
-                  padding: "4px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600, textAlign: "center",
-                  background: row.direction === "Higher" ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-                  color: row.direction === "Higher" ? "var(--positive)" : "var(--negative)",
-                }}>
-                  {row.direction === "Higher" ? "↑ Higher" : "↓ Lower"}
-                </span>
-              </div>
-            );
-          })}
-          <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "8px 0 0", textAlign: "center" }}>
-            Tier 2 KPIs use sector-specific columns not in the current column mapping. Editing will be enabled once those columns are mapped.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export default function KPILibraryEditor() {
   const [activeTab, setActiveTab] = useState("tier1");
   const [tier1Rows, setTier1Rows] = useState(INITIAL_TIER1);
   const [toast, setToast] = useState(null);
   const [COLUMN_MAPPING, setCOLUMN_MAPPING] = useState({});
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(apiUrl('/column-mapping'), { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         setCOLUMN_MAPPING(data);
-        setLoading(false);
       })
       .catch(() => {
-        setLoading(false);
         setToast({ msg: "Backend not reachable — mapped columns unavailable", type: "error" });
         setTimeout(() => setToast(null), 4000);
       });

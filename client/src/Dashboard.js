@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiUrl } from "./api";
+import { saveResult } from "./lib/resultStore";
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -208,8 +209,8 @@ function AppHeader() {
                 Ranking<br />Pipeline
             </h1>
             <p className="header-sub">
-                Upload your Screener.in export, industry mapping, and KPI library to
-                generate a fully scored, ranked Excel report in seconds.
+                Upload your Screener.in export to generate a fully scored,
+                ranked Excel report in seconds.
             </p>
         </div>
     );
@@ -253,7 +254,7 @@ function UploadZone({ label, accept, file, onChange, required }) {
     );
 }
 
-function FileUploadGrid({ queryFile, mappingFile, onQueryChange, onMappingChange }) {
+function FileUploadGrid({ queryFile, onQueryChange }) {
     return (
         <div className="grid">
             <div className="grid-full">
@@ -265,17 +266,9 @@ function FileUploadGrid({ queryFile, mappingFile, onQueryChange, onMappingChange
                     required
                 />
             </div>
-            <div className="grid-full">
-                <UploadZone
-                    label="Industry Mapping File"
-                    accept=".xlsx"
-                    file={mappingFile}
-                    onChange={onMappingChange}
-                    required
-                />
-            </div>
             <div className="grid-full kpi-source-note">
-                Scoring uses your saved <strong>KPI Library</strong> — edit it in the KPI Editor. No file upload needed.
+                Industry mapping and your <strong>KPI Library</strong> are managed on the
+                backend — only the Screener.in export is needed. Edit KPIs in the KPI Editor.
             </div>
         </div>
     );
@@ -309,7 +302,7 @@ function ErrorBox({ message }) {
     if (!message) return null;
     // Translate the browser's cryptic network error into an actionable hint.
     const hint = /failed to fetch/i.test(message)
-        ? " — the backend isn't reachable. Start it on localhost:8000 (see setup note below), then run again."
+        ? " — the backend isn't reachable. Start it on localhost:8000, then run again."
         : "";
     return <div className="error-box">⚠ {message}{hint}</div>;
 }
@@ -345,23 +338,6 @@ function DownloadButton({ url }) {
     );
 }
 
-function SetupNote() {
-    return (
-        <div className="setup-note">
-            <div className="setup-note-title">Backend Setup (one-time)</div>
-            <pre>
-                <span className="comment"># 1. Install dependencies</span>{"\n"}
-                <span className="cmd">pip install fastapi uvicorn python-multipart pandas openpyxl</span>{"\n\n"}
-                <span className="comment"># 2. Place Format.py, mapper.py, ranking.py in /backend</span>{"\n"}
-                <span className="comment"># 3. Start the API server</span>{"\n"}
-                <span className="cmd">uvicorn main:app --reload --port 8000</span>{"\n\n"}
-                <span className="comment"># 4. Run this React app</span>{"\n"}
-                <span className="cmd">npm start</span>
-            </pre>
-        </div>
-    );
-}
-
 // ─── Custom Hook ──────────────────────────────────────────────────────────────
 
 function usePipeline(columnMapping = {}) {
@@ -380,9 +356,9 @@ function usePipeline(columnMapping = {}) {
 
     const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    const run = async (queryFile, mappingFile) => {
-        if (!queryFile || !mappingFile) {
-            setError("Please upload both required files.");
+    const run = async (queryFile) => {
+        if (!queryFile) {
+            setError("Please upload the Screener.in query results file.");
             return;
         }
 
@@ -394,7 +370,6 @@ function usePipeline(columnMapping = {}) {
 
         const formData = new FormData();
         formData.append("query_results", queryFile);
-        formData.append("industry_mapping", mappingFile);
 
         formData.append('mapping_json', JSON.stringify(columnMapping));
 
@@ -427,6 +402,7 @@ function usePipeline(columnMapping = {}) {
 
             const blob = await res.blob();
             setResultFile(blob);
+            saveResult(blob); // persist so /app/results survives a refresh
             setDownloadUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
             setStep(2, "done");
             appendLog("Pipeline complete! Final_Ranked_Report.xlsx is ready.", "success");
@@ -450,8 +426,6 @@ export default function Dashboard({
     columnMapping,
     queryFile,
     setQueryFile,
-    mappingFile,
-    setMappingFile,
 }) {
     const navigate = useNavigate();
 
@@ -461,7 +435,7 @@ export default function Dashboard({
             setOutputFile(resultFile);
         }
     }, [resultFile,setOutputFile]);
-    const canRun = queryFile && mappingFile && !running;
+    const canRun = queryFile && !running;
     const showDashboard = resultFile !== null;
 
     return (
@@ -472,9 +446,7 @@ export default function Dashboard({
 
                 <FileUploadGrid
                     queryFile={queryFile}
-                    mappingFile={mappingFile}
                     onQueryChange={setQueryFile}
-                    onMappingChange={setMappingFile}
                 />
 
                 <PipelineSteps statuses={steps} />
@@ -485,7 +457,7 @@ export default function Dashboard({
                 <RunButton
                     running={running}
                     disabled={!canRun}
-                    onClick={() => run(queryFile, mappingFile)}
+                    onClick={() => run(queryFile)}
                 />
 
                 <DownloadButton url={downloadUrl} />
@@ -494,8 +466,6 @@ export default function Dashboard({
                         View Output Dashboard →
                     </button>
                 )}
-
-                <SetupNote />
             </div>
         </>
     );
