@@ -28,14 +28,17 @@ The backend URL is configured once via `client/.env` → `REACT_APP_API_URL` (co
 
 **Both services must run** — if only the frontend is up, the Column Mapper dropdowns are empty and pipeline runs fail. If MongoDB is down the server won't start.
 
-## Current state (2026-06-16)
+## Current state (2026-06-17)
 
 - Migrated from **CRA React + Python/FastAPI** to a **MERN stack**: React frontend (`client/`) + Express/MongoDB backend (`server/`). The data-ranking pipeline (format → map → rank) was ported from Python to JavaScript and verified byte-equivalent (origin: the `dataranker/` reference repo, gitignored).
 - Added: **JWT auth** (httpOnly cookie) backed by MongoDB, **subscription plans** (Free default; Premium/Enterprise scaffolded as "coming soon"), an app-wide **light/dark theme toggle**, a redesigned **product-led landing page**, and **Pricing** + **About** pages.
-- **DB-backed KPI library** — the per-run KPI Excel upload is gone. Each user has a Tier 1 KPI library in MongoDB (`models/KpiLibrary`), seeded from `core/kpiDefaults.js` (70 rows / 14 templates, generated from `files/KPI_Library.xlsx`) and editable in the KPI Editor. Pipeline now uploads 2 files (query + industry mapping). See `GET/PUT /kpi-library`.
+- **DB-backed KPI library** — the per-run KPI Excel upload is gone. Each user has a Tier 1 KPI library in MongoDB (`models/KpiLibrary`), seeded from `core/kpiDefaults.js` (70 rows / 14 templates, generated from `files/KPI_Library.xlsx`) and editable in the KPI Editor. Pipeline now uploads **only the query export**; the industry-mapping workbook is bundled with the backend (`server/data/industry-mapping.xlsx`, served via `services/industryMapping.js`) and never leaves the server. See `GET/PUT /kpi-library`.
 - **Column-mapping aliases** — `COLUMN_MAPPING` values are arrays of accepted source-column names; the frontend auto-mapper matches any alias.
-- Branch: **`feat/mern-stack-auth-theme`**.
+- **Tier-1 deployment-readiness pass (2026-06-17)** — production build now passes under `CI=true` (was failing on lint-as-error); server fail-fasts without `JWT_SECRET` and warns when `NODE_ENV!=production`; security headers + auth rate-limiting (`middleware/rateLimit.js`, dependency-free) + 15 MB upload cap; real HTML `<title>`/description + `noindex` (prototype) + `robots.txt` disallow; `npm test` fixed. Hosting decision: **separate domains, accept third-party-cookie risk** (Safari/strict-Chrome may block the cross-site auth cookie) — documented in `server/.env.example`. **Not deployed yet** — only made deploy-ready.
+- **Results persistence** — the ranked XLSX is saved to IndexedDB (`client/src/lib/resultStore.js`) on each run; `StockDashboard` hydrates it on refresh/deep-link and it's cleared on logout. **Company comparison chart** — the Results company drawer now has a recharts **radar overlay** (company vs template average across KPI metric-scores).
+- Branch: **`feat/mern-stack-auth-theme`**. Nothing committed for this session's work yet.
 - Three known core-logic bugs remain frozen pending team approval (carried over from the Python pipeline; see Claude's memory notes). Do not touch without Romit's approval.
+- **Pending: UI deployment-readiness fixes** — a 4-agent UI audit (2026-06-17) found ~40 issues (3 blockers, ~12 high) spanning stale marketing copy, `$`→₹ pricing, light-mode contrast (hardcoded hex vs tokens), mobile nav/breakpoints, keyboard a11y, FOUC, real 404, ColumnMapper manual-mapping inversion + disabled validation, faked pipeline progress. See memory `ui-deploy-audit`. Awaiting go-ahead to implement (all frontend, no core logic).
 
 ## Architecture
 
@@ -59,8 +62,8 @@ Routes (in `client/src/App.js`):
 Key files:
 - `src/api.js` — `API_BASE` from `REACT_APP_API_URL` + `apiFetch` helper (always sends `credentials:'include'` so the auth cookie travels)
 - `src/auth.js` — real auth: `signUp`/`logIn`/`logOut`/`fetchMe` against `/auth/*`; caches the user object in `localStorage` (the JWT itself is an httpOnly cookie, not readable in JS)
-- `src/App.js` — root router; seeds `backendConfig` from `GET /column-mapping`; lifts `outputFile`, `COLUMN_MAPPING`, and the two pipeline upload files (query + industry mapping)
-- `src/Dashboard.js` — pipeline page; POSTs 2 files (query + industry mapping) + `mapping_json` to `/run-pipeline`, gets the ranked XLSX back. KPI library is no longer uploaded — it comes from the user's saved set in the DB
+- `src/App.js` — root router; seeds `backendConfig` from `GET /column-mapping`; lifts `outputFile`, `COLUMN_MAPPING`, and the single pipeline upload file (query export)
+- `src/Dashboard.js` — pipeline page; POSTs the query export + `mapping_json` to `/run-pipeline`, gets the ranked XLSX back. Neither the KPI library nor the industry-mapping workbook is uploaded — KPIs come from the user's saved set in the DB, and the mapping workbook is bundled with the backend
 - `src/KPILibraryEditor.js` — loads the user's Tier 1 KPIs from `GET /kpi-library` (server seeds defaults on first call) and **Save**s via `PUT /kpi-library`. xlsx download/upload kept as optional import/export only
 - `components/ProtectedRoute.jsx` — verifies the session via `GET /auth/me`, else redirects to `/login`
 - `components/AppShell.jsx` — app sidebar/topbar; hosts the user menu, sign-out, and theme toggle
@@ -80,7 +83,8 @@ Deployment plumbing: `client/vercel.json` + `client/public/_redirects` provide t
 - `models/KpiLibrary.js` — per-user Tier 1 KPI library `{ userId (unique), name, rows:[{template,kpi,category,weight,direction}] }`; replaces the uploaded KPI Excel
 - `routes/plans.js` + `core/plans.js` — `GET /plans`; tiers **Free / Premium / Enterprise** (only Free active)
 - `routes/kpiLibrary.js` + `services/kpiLibrary.js` — `GET /kpi-library` (lazy-seeds defaults from `core/kpiDefaults.js`) and `PUT /kpi-library` (validated save). `toRankerRows` adapts stored rows into the keys the ranker reads
-- `routes/pipeline.js` — `GET /column-mapping` (public) and `POST /run-pipeline` (auth-gated); runs the 3 stages in-memory. Pulls the signed-in user's KPI library from the DB (no KPI upload)
+- `routes/pipeline.js` — `GET /column-mapping` (public) and `POST /run-pipeline` (auth-gated, single `query_results` upload, 15 MB limit); runs the 3 stages in-memory. Pulls the signed-in user's KPI library from the DB (no KPI upload) and the industry-mapping workbook from `services/industryMapping.js` (no mapping upload)
+- `services/industryMapping.js` — loads + caches the bundled `server/data/industry-mapping.xlsx` (the canonical 190→130 mapping) and hands its buffer to the mapper. Replaces the per-run mapping upload; keeps the proprietary mapping server-side only
 - `services/formatter.js`, `services/mapper.js`, `services/ranker.js` + `lib/rank.js`, `lib/io.js` — the **ported pipeline** (Stage 1 format → Stage 2 industry map → Stage 3 direction-aware percentile ranking). Protected core logic. `runRanking(mapped, kpiRows)` takes parsed rows; `runRankingFromBuffer` keeps the legacy xlsx path (scoring math unchanged)
 - `core/config.js` — `COLUMN_MAPPING` (served to the frontend; each value is an **array of accepted source-column aliases**), `EXTRA_COLUMNS`, drop columns, KPI sheet coordinates, output cell colors
 - `core/kpiDefaults.js` — `DEFAULT_TIER1_ROWS`, generated from `files/KPI_Library.xlsx` (70 rows / 14 templates); seeded for every new user

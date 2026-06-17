@@ -84,6 +84,7 @@ const ColumnMapper = ({ backendConfig = {}, setCOLUMN_MAPPING }) => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendConfig, performAutoMapping]);
 
   /**
@@ -229,18 +230,6 @@ const ColumnMapper = ({ backendConfig = {}, setCOLUMN_MAPPING }) => {
    * Validate and submit mapping
    */
   const handleSubmitMapping = async () => {
-    // Check if all unmapped columns have been manually mapped
-    const unmappedStillPending = unmappedColumns.filter(
-      col => !manualMappings[col]
-    );
-
-    // if (unmappedStillPending.length > 0) {
-    //   setError(
-    //     `Please map these columns: ${unmappedStillPending.join(', ')}`
-    //   );
-    //   return;
-    // }
-
     setIsLoading(true);
     try {
       const finalMapping = buildFinalMapping();

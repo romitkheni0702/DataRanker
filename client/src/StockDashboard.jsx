@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import * as XLSX from "xlsx";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
 } from "recharts";
+import { loadResult } from "./lib/resultStore";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -184,6 +186,17 @@ function CompanyDrawer({ company, allCompanies, onClose }) {
     score: parseFloat(company[k]) || 0,
   }));
 
+  // Per-KPI comparison of this company against the template average.
+  const comparisonData = metricScoreKeys.map(k => {
+    const vals = allCompanies.map(c => parseFloat(c[k])).filter(v => !isNaN(v));
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return {
+      kpi: k.replace("_Metric_Score", ""),
+      company: parseFloat(company[k]) || 0,
+      average: Math.round(avg * 100) / 100,
+    };
+  });
+
   const kpiKeys = extractKpiKeys([company]);
 
   const peers = allCompanies
@@ -283,6 +296,30 @@ function CompanyDrawer({ company, allCompanies, onClose }) {
           </div>
         )}
 
+        {/* Comparison: company vs template average across KPI scores */}
+        {comparisonData.length >= 3 && (
+          <div>
+            <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: "var(--text-muted)", letterSpacing: ".1em", marginBottom: 4 }}>VS TEMPLATE AVERAGE</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, lineHeight: 1.5 }}>
+              {company.Symbol} vs the average of all {allCompanies.length} companies in {company.KPI_Template} (scores 0–10).
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <RadarChart data={comparisonData} outerRadius="70%">
+                <PolarGrid stroke="var(--border)" />
+                <PolarAngleAxis dataKey="kpi" tick={{ fill: "var(--text-secondary)", fontSize: 9, fontFamily: "'JetBrains Mono',monospace" }} />
+                <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
+                <Radar name={company.Symbol} dataKey="company" stroke="#7C6CFF" fill="#7C6CFF" fillOpacity={0.4} />
+                <Radar name="Template avg" dataKey="average" stroke="#22C55E" fill="#22C55E" fillOpacity={0.12} />
+                <Legend wrapperStyle={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace" }} />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontFamily: "'JetBrains Mono',monospace", fontSize: 11 }}
+                  labelStyle={{ color: "var(--text)" }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* All raw KPI financials — dynamic */}
         {kpiKeys.length > 0 && (
           <div>
@@ -342,12 +379,29 @@ export default function StockDashboard({ resultFile }) {
   // visibleKpiKeys: per-template map { templateName: [key, ...] }
   const [visibleKpiMap, setVisibleKpiMap] = useState({});
 
+  // Persisted result: if we arrived without an in-memory result (page refresh or
+  // deep-link), hydrate the last run from IndexedDB.
+  const [storedFile, setStoredFile] = useState(null);
+  const [hydrating, setHydrating] = useState(!resultFile);
+  useEffect(() => {
+    if (resultFile) { setHydrating(false); return; }
+    let cancelled = false;
+    loadResult().then((blob) => {
+      if (cancelled) return;
+      if (blob) setStoredFile(blob);
+      setHydrating(false);
+    });
+    return () => { cancelled = true; };
+  }, [resultFile]);
+
+  const effectiveFile = resultFile || storedFile;
+
   // ── Parse file ──
   useEffect(() => {
-    if (!resultFile) return;
+    if (!effectiveFile) return;
     const run = async () => {
       try {
-        const ab = await resultFile.arrayBuffer();
+        const ab = await effectiveFile.arrayBuffer();
         const wb = XLSX.read(ab, { type: "array" });
         const parsed = {};
         wb.SheetNames.forEach(name => {
@@ -368,7 +422,7 @@ export default function StockDashboard({ resultFile }) {
       }
     };
     run();
-  }, [resultFile]);
+  }, [effectiveFile]);
 
   // ── Derived ──
   const allInTemplate  = sheets[activeTemplate] || [];
@@ -421,8 +475,20 @@ export default function StockDashboard({ resultFile }) {
     return <span style={{ color: "var(--accent-hover)" }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
   };
 
+  // Still checking IndexedDB for a persisted result (avoids an empty-state flash).
+  if (!effectiveFile && hydrating) {
+    return (
+      <div style={{
+        minHeight: "100vh", display: "grid", placeItems: "center",
+        color: "var(--text-muted)", fontFamily: "'JetBrains Mono',monospace", fontSize: 13,
+      }}>
+        Loading saved results…
+      </div>
+    );
+  }
+
   // Empty state — no pipeline output yet (all hooks already declared above).
-  if (!resultFile) {
+  if (!effectiveFile) {
     return (
       <div style={{
         minHeight: "100vh", display: "flex", flexDirection: "column",

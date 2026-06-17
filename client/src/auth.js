@@ -4,6 +4,7 @@
 // server via fetchMe()/ProtectedRoute.
 
 import { apiFetch } from "./api";
+import { clearResult } from "./lib/resultStore";
 
 const USER_KEY = "matrix_user";
 
@@ -33,6 +34,7 @@ export async function logOut() {
     await apiFetch("/auth/logout", { method: "POST" });
   } finally {
     localStorage.removeItem(USER_KEY);
+    clearResult(); // don't leak one user's results to the next
   }
 }
 
