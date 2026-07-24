@@ -879,6 +879,7 @@ export default function ScreenerPage() {
                             return (
                               <td
                                 key={col}
+                                className={isNum ? "sp-num" : undefined}
                                 style={isNum ? { textAlign: "right" } : undefined}
                               >
                                 {val === null || val === undefined ? "-" : String(val)}
@@ -1143,7 +1144,7 @@ const CSS = `
   }
   .sp-btn.primary:hover:not(:disabled) {
     filter: brightness(1.08); transform: translateY(-1px);
-    box-shadow: 0 8px 28px rgba(16,185,129,.4);
+    box-shadow: 0 6px 18px rgba(16,185,129,.26);
   }
 
   /* Download dropdown */
@@ -1255,7 +1256,8 @@ const CSS = `
   /* Table */
   .sp-table-wrap {
     flex: 1; overflow: auto; min-height: 0;
-    border-radius: ${radius.md}; border: 1px solid ${colors.border}; ${glassCss}
+    border-radius: ${radius.md}; border: 1px solid ${colors.border};
+    background: ${colors.card};
   }
   .sp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
   .sp-table thead { position: sticky; top: 0; z-index: 2; }
@@ -1264,12 +1266,12 @@ const CSS = `
   .sp-th-sortable {
     padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
     letter-spacing: .06em; text-transform: uppercase; color: ${colors.textMuted};
-    background: ${colors.canvas}; border-bottom: 2px solid ${colors.border};
+    background: ${colors.inset}; border-bottom: 1px solid ${colors.border};
     white-space: nowrap; cursor: pointer; user-select: none;
     transition: color .12s, background .12s;
   }
-  .sp-th-sortable:hover { color: ${colors.text}; background: rgba(0,0,0,0.18); }
-  .sp-th-sortable.sorted { color: ${colors.accent}; background: rgba(16,185,129,0.06); }
+  .sp-th-sortable:hover { color: ${colors.text}; background: ${colors.elevated}; }
+  .sp-th-sortable.sorted { color: ${colors.accent}; background: ${colors.accentSoft}; }
   .sp-th-inner { display: inline-flex; align-items: center; gap: 5px; }
   .sp-sort-icon {
     font-size: 10px; opacity: .25; transition: opacity .12s;
@@ -1283,23 +1285,29 @@ const CSS = `
     border-bottom: 1px solid ${colors.borderSubtle}; font-variant-numeric: tabular-nums;
   }
   .sp-table tbody tr:last-child td { border-bottom: none; }
-  // .sp-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.016); }
-  // .sp-table tbody tr:hover td { background: ${colors.inset} !important; color: ${colors.text}; }
+  /* Numeric cells read crisp and data-forward */
+  .sp-table td.sp-num { color: ${colors.text}; font-weight: 500; }
+  /* Subtle zebra striping for row tracking across wide tables */
+  .sp-table tbody tr:nth-child(even) td { background: ${colors.canvas}; }
+  /* Whole-row hover highlight (must follow the zebra rule to win) */
+  .sp-table tbody tr:hover td { background: ${colors.elevated}; color: ${colors.text}; }
 
   /* Sticky first column */
   .sp-th-sortable:first-child {
     position: sticky; left: 0; z-index: 3;
-    background: ${colors.canvas};
+    background: ${colors.inset};
     max-width: 220px; border-right: 1px solid ${colors.border};
   }
   .sp-table td:first-child {
     position: sticky; left: 0; z-index: 1;
-    background: ${colors.canvas}; max-width: 220px;
+    background: ${colors.card}; max-width: 220px;
     overflow: hidden; text-overflow: ellipsis;
     border-right: 1px solid ${colors.border};
     color: ${colors.text}; font-weight: 600;
   }
-  .sp-table tbody tr:hover td:first-child { background: ${colors.inset} !important; color: ${colors.accent}; }
+  /* keep the sticky name column matching its row's zebra tint */
+  .sp-table tbody tr:nth-child(even) td:first-child { background: ${colors.canvas}; }
+  .sp-table tbody tr:hover td:first-child { background: ${colors.elevated}; color: var(--accent-text); }
 
   /* Pagination */
   .sp-pagination {

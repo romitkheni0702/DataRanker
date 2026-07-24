@@ -68,9 +68,9 @@ export const radius = {
 export const shadow = {
   card: "var(--shadow-card)",
   elevated: "var(--shadow-elevated)",
-  glow: "0 8px 32px rgba(16,185,129,0.35)",
-  glowSoft: "0 0 60px rgba(16,185,129,0.12)",
-  glowGreen: "0 8px 30px rgba(16,185,129,0.28)",
+  glow: "0 4px 16px rgba(16,185,129,0.22)",
+  glowSoft: "0 0 60px rgba(16,185,129,0.10)",
+  glowGreen: "0 4px 16px rgba(16,185,129,0.20)",
 };
 
 // Reusable glass-card CSS (string) - translucent fill, blur, lit top edge.

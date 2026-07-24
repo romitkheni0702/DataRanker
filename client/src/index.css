@@ -23,7 +23,7 @@
   --text-secondary: #98A2BC;
   --text-muted: #5A6480;
 
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.28);
   --shadow-elevated: 0 16px 48px rgba(0,0,0,0.55);
 
   /* Ambient backdrop layers */
@@ -54,7 +54,7 @@
   --text-secondary: #45506E;
   --text-muted: #5C6785;
 
-  --shadow-card: 0 1px 2px rgba(16,24,64,0.06), 0 8px 24px rgba(16,24,64,0.08);
+  --shadow-card: 0 1px 2px rgba(16,24,64,0.05);
   --shadow-elevated: 0 16px 48px rgba(16,24,64,0.16);
 
   --bd-glow-1: rgba(16,185,129,0.10);
@@ -126,10 +126,7 @@ body::before {
   pointer-events: none;
   background:
     radial-gradient(55% 40% at 50% -5%, var(--bd-glow-1), transparent 70%),
-    radial-gradient(40% 35% at 90% 105%, var(--bd-glow-2), transparent 70%),
-    linear-gradient(var(--bd-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bd-grid) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+    radial-gradient(40% 35% at 90% 105%, var(--bd-glow-2), transparent 70%);
 }
 
 code, pre, .mono {
