@@ -12,6 +12,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import PricingPage from "./pages/PricingPage";
+import DemoPage from "./pages/DemoPage";
 import AboutPage from "./pages/AboutPage";
 import ScreenerPage from "./pages/ScreenerPage";
 import ComparisonPage from "./pages/ComparisonPage";
@@ -80,6 +81,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/demo" element={<DemoPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />

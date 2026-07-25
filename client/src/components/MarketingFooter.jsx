@@ -20,6 +20,7 @@ export default function MarketingFooter() {
             <div className="mkt-footer-head">Product</div>
             <Link to="/">Overview</Link>
             <Link to="/pricing">Pricing</Link>
+            <Link to="/demo">Demo</Link>
             <Link to="/signup">Get started</Link>
           </div>
           <div className="mkt-footer-col">

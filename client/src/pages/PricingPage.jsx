@@ -13,7 +13,7 @@ const FALLBACK_PLANS = [
   {
     id: "standard",
     name: "Standard",
-    tagline: "Everything you need to rank, analyse, and compare stocks - free for 3 months.",
+    tagline: "Everything you need to rank, analyse and compare stocks. Free for 3 months.",
     monthlyPrice: 499,
     yearlyPrice: 4999,
     yearlyDiscountPct: 17,
@@ -24,8 +24,8 @@ const FALLBACK_PLANS = [
       "Rank any stock universe in minutes",
       "Smart composite scoring across multiple KPIs",
       "Filter stocks with simple expressions before ranking",
-      "Compare 2–6 companies head-to-head with charts",
-      "Company deep dive - live price, fundamentals & charts",
+      "Compare 2 to 6 companies head-to-head with charts",
+      "Company deep-dive with live price, fundamentals and charts",
       "Customise KPI weights to match your investment style",
       "Email PDF summary of top-ranked companies",
     ],
@@ -46,7 +46,7 @@ const FALLBACK_PLANS = [
       "Custom stock watchlist",
       "Daily BSE/NSE company announcements feed",
       "Multi-year historical data & KPI time-series",
-      "AI Interpretation Engine - plain-language insights",
+      "AI interpretation engine for plain-language insights",
     ],
   },
 ];
@@ -55,7 +55,7 @@ function isContactPlan(plan) {
   return !plan.monthlyPrice && !plan.yearlyPrice;
 }
 
-// Returns { regular, discounted } — discounted is null when no discount is set.
+// Returns { regular, discounted }. discounted is null when no discount is set.
 function getPrices(plan, period) {
   if (period === "yearly") {
     return {
@@ -100,7 +100,7 @@ export default function PricingPage() {
       />
       <style>{PRICING_CSS}</style>
 
-      {/* ── Announcement bar — promo when active, else free trial ── */}
+      {/* Announcement bar: promo when active, else free trial. */}
       {(() => {
         const maxTrial = Math.max(...plans.map((p) => p.trialDays || 0));
         const showPromo = promo?.promoBanner;
@@ -125,7 +125,7 @@ export default function PricingPage() {
               </span>
             ) : (
               <span>
-                <strong>{maxTrial}-day free trial</strong> — full access, no credit card required.
+                <strong>{maxTrial}-day free trial.</strong> Full access, no credit card required.
               </span>
             )}
             <Link to="/signup" className="pr-trial-bar-cta">

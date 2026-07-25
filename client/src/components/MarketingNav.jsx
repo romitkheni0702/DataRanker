@@ -14,6 +14,7 @@ export default function MarketingNav() {
         <div className="mkt-nav-links">
           <NavLink to="/" end className={({ isActive }) => `mkt-link ${isActive ? "active" : ""}`}>Product</NavLink>
           <NavLink to="/pricing" className={({ isActive }) => `mkt-link ${isActive ? "active" : ""}`}>Pricing</NavLink>
+          <NavLink to="/demo" className={({ isActive }) => `mkt-link ${isActive ? "active" : ""}`}>Demo</NavLink>
           <NavLink to="/about" className={({ isActive }) => `mkt-link ${isActive ? "active" : ""}`}>About</NavLink>
         </div>
 

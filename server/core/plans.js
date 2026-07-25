@@ -1,75 +1,59 @@
 // core/plans.js - hardcoded fallback subscription tiers (used when DB has no plans).
-// Admin can override all of these via the Plan Management page (/app/admin/plans).
+// Shape matches models/Plan.js and what the Pricing page expects (monthly/yearly
+// prices, trial, discount). Admin can override all of these via /app/admin/plans.
 
 const PLANS = [
   {
-    id: "free",
-    name: "Free",
-    price: 0,
-    period: "forever",
-    tagline: "Admin-assigned free access.",
-    features: [
-      "Full ranking pipeline",
-      "KPI library editor",
-      "Results dashboard & Excel export",
-    ],
-    cta: "Admin assigned",
-    active: true,
-    comingSoon: false,
-    highlighted: false,
-  },
-  {
     id: "standard",
     name: "Standard",
-    price: 0,
-    period: "3 months free, then paid",
-    tagline: "Default plan for all new signups. First 3 months free.",
-    features: [
-      "Full ranking pipeline (format → map → rank)",
-      "Column mapper & KPI library editor",
-      "Results dashboard & Excel export",
-      "Screener & Comparison dashboard",
-    ],
-    cta: "Get started",
-    active: true,
-    comingSoon: false,
+    tagline: "Everything you need to rank, analyse and compare stocks. Free for 3 months.",
+    monthlyPrice: 499,
+    yearlyPrice: 4999,
+    monthlyDiscountedPrice: 0,
+    yearlyDiscountedPrice: 0,
+    yearlyDiscountPct: 17,
+    trialDays: 90,
     highlighted: true,
+    cta: "Start free trial",
+    order: 1,
+    features: [
+      "Rank any stock universe in minutes",
+      "Composite scoring across profitability, valuation, growth and efficiency",
+      "Filter stocks with simple formulas before you rank",
+      "Compare 2 to 6 companies with radar, bar and percentile charts",
+      "Company deep-dive with live price, fundamentals and a 1-year chart",
+      "Customise KPI weights to match your investment style",
+      "Email yourself a PDF summary of the top-ranked companies",
+      "Daily pre-loaded screener snapshot, no upload needed",
+    ],
   },
   {
     id: "premium",
     name: "Premium",
-    price: 49, // PLACEHOLDER price
-    period: "month",
-    tagline: "For analysts running rankings every day.",
-    features: [
-      "Everything in Free",
-      "Saved pipelines & history (planned)",
-      "Larger universes & priority runs (planned)",
-    ],
-    cta: "Coming soon",
-    active: false,
-    comingSoon: true,
-    highlighted: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: null, // custom / contact
-    period: "custom",
-    tagline: "For funds with bespoke methodology & support needs.",
-    features: [
-      "Everything in Premium",
-      "Custom KPI templates & SSO (planned)",
-      "Dedicated support (planned)",
-    ],
-    cta: "Contact us",
-    active: false,
-    comingSoon: true,
+    tagline: "Advanced analytics, real-time alerts, watchlists and AI interpretation on top of everything in Standard.",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    monthlyDiscountedPrice: 0,
+    yearlyDiscountedPrice: 0,
+    yearlyDiscountPct: 0,
+    trialDays: 0,
     highlighted: false,
+    cta: "Contact us to upgrade",
+    order: 2,
+    features: [
+      "Everything in Standard",
+      "Detailed fundamental scores, margin breakdowns and ratio analysis",
+      "Sector benchmarking and leaderboard scoring",
+      "Real-time alerts on earnings, downgrades and macro signals",
+      "Custom stock watchlist across your curated universe",
+      "Daily BSE and NSE announcements feed",
+      "Multi-year historical data and KPI time-series",
+      "AI interpretation engine for plain-language insights on your ranked data",
+    ],
   },
 ];
 
-// Valid plan ids for the User model enum.
+// Valid plan ids (kept for any callers that need the id list).
 const PLAN_IDS = PLANS.map((p) => p.id);
 
 module.exports = { PLANS, PLAN_IDS };
