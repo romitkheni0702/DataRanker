@@ -74,7 +74,7 @@ function pricePer(period) {
 }
 
 export default function PricingPage() {
-  const [plans, setPlans]   = useState(FALLBACK_PLANS);
+  const [plans, setPlans]   = useState(null); // null = loading; avoids flash of stale fallback
   const [period, setPeriod] = useState("monthly"); // "monthly" | "yearly"
   const [promo, setPromo]   = useState(null); // { promoBanner, promoExpiry } | null
 
@@ -82,8 +82,8 @@ export default function PricingPage() {
     let cancelled = false;
     fetch(apiUrl("/plans"))
       .then((r) => r.json())
-      .then((data) => { if (!cancelled && Array.isArray(data) && data.length) setPlans(data); })
-      .catch(() => {});
+      .then((data) => { if (!cancelled) setPlans(Array.isArray(data) && data.length ? data : FALLBACK_PLANS); })
+      .catch(() => { if (!cancelled) setPlans(FALLBACK_PLANS); });
     fetch(apiUrl("/promo"))
       .then((r) => r.json())
       .then((data) => { if (!cancelled && data.promoBanner) setPromo(data); })
@@ -100,8 +100,8 @@ export default function PricingPage() {
       />
       <style>{PRICING_CSS}</style>
 
-      {/* Announcement bar: promo when active, else free trial. */}
-      {(() => {
+      {/* Announcement bar: promo when active, else free trial. Hidden while plans load. */}
+      {plans && (() => {
         const maxTrial = Math.max(...plans.map((p) => p.trialDays || 0));
         const showPromo = promo?.promoBanner;
         const promoExpiry = promo?.promoExpiry ? new Date(promo.promoExpiry) : null;
@@ -141,7 +141,7 @@ export default function PricingPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <div className="pr-kicker">Pricing</div>
           <h1 className="pr-title">Simple, transparent plans</h1>
-          <p className="pr-sub">Try everything free for {Math.max(...plans.map((p) => p.trialDays || 0)) || 90} days. Upgrade when you're ready.</p>
+          <p className="pr-sub">Try everything free for {plans ? (Math.max(...plans.map((p) => p.trialDays || 0)) || 90) : 90} days. Upgrade when you're ready.</p>
         </motion.div>
 
         {/* Monthly / Yearly toggle */}
@@ -157,7 +157,7 @@ export default function PricingPage() {
             onClick={() => setPeriod("yearly")}
           >
             Yearly
-            {plans.some((p) => p.yearlyDiscountPct > 0) && (
+            {plans?.some((p) => p.yearlyDiscountPct > 0) && (
               <span className="pr-toggle-badge">
                 Save {Math.max(...plans.map((p) => p.yearlyDiscountPct || 0))}%
               </span>
@@ -167,7 +167,19 @@ export default function PricingPage() {
       </section>
 
       <section className="pr-grid-wrap">
-        <div className={`pr-grid pr-grid-${plans.length}`}>
+        {!plans && (
+          <div className="pr-grid pr-grid-2" style={{ opacity: 0.35, pointerEvents: "none" }}>
+            {[0, 1].map((i) => (
+              <div key={i} className="pr-card" style={{ minHeight: 420 }}>
+                <div style={{ height: 20, width: "40%", borderRadius: 6, background: "var(--border)", marginBottom: 16 }} />
+                <div style={{ height: 56, width: "60%", borderRadius: 6, background: "var(--border)", marginBottom: 12 }} />
+                <div style={{ height: 14, width: "90%", borderRadius: 6, background: "var(--border)", marginBottom: 8 }} />
+                <div style={{ height: 14, width: "75%", borderRadius: 6, background: "var(--border)" }} />
+              </div>
+            ))}
+          </div>
+        )}
+        {plans && <div className={`pr-grid pr-grid-${plans.length}`}>
           {plans.map((plan, i) => {
             const contact = isContactPlan(plan);
             const showYearlyDiscount = period === "yearly" && plan.yearlyDiscountPct > 0;
@@ -236,7 +248,7 @@ export default function PricingPage() {
               </motion.div>
             );
           })}
-        </div>
+        </div>}
       </section>
 
       <MarketingFooter />

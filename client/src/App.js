@@ -34,6 +34,7 @@ export default function App() {
   const [outputFile, setOutputFile] = useState(null);
   const [backendConfig, setBackendConfig] = useState({}); // Backend COLUMN_MAPPING config
   const [appConfig, setAppConfig] = useState(DEFAULT_APP_CONFIG);
+  const [appConfigReady, setAppConfigReady] = useState(false);
   // The pipeline upload is lifted here so it persists across route changes
   // (e.g. visiting Results and returning).
   const [queryFile, setQueryFile] = useState(null);
@@ -71,12 +72,15 @@ export default function App() {
       headers: getAuthHeaders(),
     })
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setAppConfig((prev) => ({ ...prev, ...data })); })
-      .catch(() => {});
+      .then((data) => {
+        if (data) setAppConfig((prev) => ({ ...prev, ...data }));
+        setAppConfigReady(true);
+      })
+      .catch(() => { setAppConfigReady(true); });
   }, []);
 
   return (
-    <AppConfigContext.Provider value={{ config: appConfig, refresh: refreshAppConfig }}>
+    <AppConfigContext.Provider value={{ config: appConfig, ready: appConfigReady, refresh: refreshAppConfig }}>
     <BrowserRouter>
       <Routes>
         {/* Public */}

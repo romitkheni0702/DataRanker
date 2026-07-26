@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { apiUrl, getAuthHeaders } from "./api";
 import { saveResult } from "./lib/resultStore";
 import ColumnMapper from "./components/ColumnMapper";
-import { useAppConfig } from "./AppConfigContext";
+import { useAppConfig, useAppConfigReady } from "./AppConfigContext";
 import PlanGate from "./components/PlanGate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -345,6 +345,7 @@ function usePipeline(columnMapping = {}) {
 export default function Dashboard({ setOutputFile, backendConfig, queryFile, setQueryFile }) {
     const navigate = useNavigate();
     const { allowCustomUpload } = useAppConfig();
+    const configReady = useAppConfigReady();
 
     const [mapping, setMapping] = useState([{}]);
     const [mappingReady, setMappingReady] = useState(false);
@@ -360,7 +361,7 @@ export default function Dashboard({ setOutputFile, backendConfig, queryFile, set
         if (resultFile) setOutputFile(resultFile);
     }, [resultFile, setOutputFile]);
 
-    if (!allowCustomUpload) return <Navigate to="/app/screener" replace />;
+    if (configReady && !allowCustomUpload) return <Navigate to="/app/screener" replace />;
 
     const canRun = queryFile && mappingReady && !running;
     const showDashboard = resultFile !== null;

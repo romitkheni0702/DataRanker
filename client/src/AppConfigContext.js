@@ -9,12 +9,12 @@ export const DEFAULT_APP_CONFIG = {
   maintenanceBanner:  "",
 };
 
-// Context holds { config, refresh } so AppShell can re-fetch after login
-// without needing to thread setAppConfig through props.
-export const AppConfigContext = createContext({ config: DEFAULT_APP_CONFIG, refresh: () => {} });
+// Context holds { config, ready, refresh }.
+// `ready` is false until the first successful GET /app-config response so that
+// components which gate on config values (e.g. Dashboard's redirect to /screener)
+// don't act on stale defaults before the real flags arrive.
+export const AppConfigContext = createContext({ config: DEFAULT_APP_CONFIG, ready: false, refresh: () => {} });
 
-// Consumer hook - returns the flat config object (unchanged API for all pages).
 export const useAppConfig = () => useContext(AppConfigContext).config;
-
-// Used by AppShell to trigger a re-fetch right after the user is authenticated.
+export const useAppConfigReady = () => useContext(AppConfigContext).ready;
 export const useRefreshAppConfig = () => useContext(AppConfigContext).refresh;

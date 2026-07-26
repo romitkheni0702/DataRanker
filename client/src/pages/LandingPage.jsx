@@ -134,7 +134,7 @@ function StatItem({ value, label }) {
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(0);
   const [stats, setStats] = useState(null);          // null until /stats responds
-  const [plans, setPlans] = useState(FALLBACK_PLANS);
+  const [plans, setPlans] = useState(null); // null = loading; avoids flash of stale fallback
   const [period, setPeriod] = useState("monthly");   // "monthly" | "yearly"
   const [sc, setSc] = useState({});                  // site content overrides
 
@@ -146,8 +146,8 @@ export default function LandingPage() {
       .catch(() => {});
     fetch(apiUrl("/plans"))
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && Array.isArray(d) && d.length) setPlans(d); })
-      .catch(() => {});
+      .then((d) => { if (!cancelled) setPlans(Array.isArray(d) && d.length ? d : FALLBACK_PLANS); })
+      .catch(() => { if (!cancelled) setPlans(FALLBACK_PLANS); });
     fetch(apiUrl("/site-content"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d?.landing) setSc(d.landing); })
@@ -156,15 +156,15 @@ export default function LandingPage() {
   }, []);
 
   const trialDays = useMemo(
-    () => Math.max(0, ...plans.map((p) => p.trialDays || 0)),
+    () => plans ? Math.max(0, ...plans.map((p) => p.trialDays || 0)) : 90,
     [plans]
   );
   const maxYearlyDiscount = useMemo(
-    () => Math.max(0, ...plans.map((p) => p.yearlyDiscountPct || 0)),
+    () => plans ? Math.max(0, ...plans.map((p) => p.yearlyDiscountPct || 0)) : 0,
     [plans]
   );
   const entryPlan = useMemo(
-    () => plans.find((p) => !isContactPlan(p)) || plans[0],
+    () => plans ? (plans.find((p) => !isContactPlan(p)) || plans[0]) : null,
     [plans]
   );
 
@@ -358,7 +358,7 @@ export default function LandingPage() {
         </motion.div>
 
         <div className="lp-plans">
-          {plans.map((plan, i) => {
+          {(plans || []).map((plan, i) => {
             const contact = isContactPlan(plan);
             const { regular, discounted } = getPrices(plan, period);
             const showYearlyDiscount = period === "yearly" && plan.yearlyDiscountPct > 0;
