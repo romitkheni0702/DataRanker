@@ -1,4 +1,4 @@
-# Matrix (DataRanker) — Equity Ranking Pipeline
+# Matrix (ThinkVest) — Equity Ranking Pipeline
 
 A MERN app for scoring and ranking listed companies by industry-specific KPI templates.
 An admin uploads a daily Screener.in export; users filter that snapshot and run it through
