@@ -1,24 +1,44 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import MarketingNav from "../components/MarketingNav";
 import MarketingFooter from "../components/MarketingFooter";
 import Seo from "../seo";
 import { colors, gradients, fonts, radius, glassCss } from "../theme";
+import { apiUrl } from "../api";
 
-// Dummy About page - placeholder copy, fully themed.
-const VALUES = [
+const DEFAULT_VALUES = [
   { title: "Defensible by design", desc: "Every score traces back to a KPI, a weight and a direction you control. No black boxes." },
   { title: "Analyst-first", desc: "Built around the real workflow of equity research - export, map, rank, export again." },
   { title: "Your methodology", desc: "ThinkVest runs your templates. The edge stays yours; we just make it fast and repeatable." },
 ];
 
-const STATS = [
+const DEFAULT_STATS = [
   { k: "3-stage", v: "pipeline: format → map → rank" },
   { k: "190 → 130", v: "industry-to-sector mapping" },
   { k: "1 click", v: "from raw export to ranked report" },
 ];
 
 export default function AboutPage() {
+  const [sc, setSc] = useState({});
+
+  useEffect(() => {
+    fetch(apiUrl("/site-content"))
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => setSc(data.about || {}))
+      .catch(() => {});
+  }, []);
+
+  const stats = DEFAULT_STATS.map((def, i) => ({
+    k: sc.stats?.[i]?.k || def.k,
+    v: sc.stats?.[i]?.v || def.v,
+  }));
+
+  const values = DEFAULT_VALUES.map((def, i) => ({
+    title: sc.values?.[i]?.title || def.title,
+    desc: sc.values?.[i]?.desc || def.desc,
+  }));
+
   return (
     <div style={{ color: colors.text, fontFamily: fonts.sans, minHeight: "100vh", overflowX: "hidden" }}>
       <Seo
@@ -32,18 +52,14 @@ export default function AboutPage() {
       <section className="ab-hero">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <div className="ab-kicker">About ThinkVest</div>
-          <h1 className="ab-title">We turn fundamentals into<br /><span className="ab-grad">defensible rankings.</span></h1>
-          <p className="ab-sub">
-            ThinkVest is a proprietary equity-ranking engine. It maps company fundamentals
-            to your sectors and scores them against your KPI templates - so your team
-            spends time on judgement, not spreadsheets.
-          </p>
+          <h1 className="ab-title">{sc.heroTitle || "We turn fundamentals into"}<br /><span className="ab-grad">{sc.heroTitleAccent || "defensible rankings."}</span></h1>
+          <p className="ab-sub">{sc.heroSubtitle || "ThinkVest is a proprietary equity-ranking engine. It maps company fundamentals to your sectors and scores them against your KPI templates - so your team spends time on judgement, not spreadsheets."}</p>
         </motion.div>
       </section>
 
       <section className="ab-section">
         <div className="ab-stats">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.k} className="ab-stat">
               <div className="ab-stat-k">{s.k}</div>
               <div className="ab-stat-v">{s.v}</div>
@@ -53,9 +69,9 @@ export default function AboutPage() {
       </section>
 
       <section className="ab-section">
-        <h2 className="ab-h2">What we believe</h2>
+        <h2 className="ab-h2">{sc.valuesTitle || "What we believe"}</h2>
         <div className="ab-values">
-          {VALUES.map((v, i) => (
+          {values.map((v, i) => (
             <motion.div key={v.title} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: i * 0.06 }} className="ab-value">
               <div className="ab-value-title">{v.title}</div>
               <div className="ab-value-desc">{v.desc}</div>
@@ -66,7 +82,7 @@ export default function AboutPage() {
 
       <section className="ab-cta-section">
         <div className="ab-cta">
-          <h2 className="ab-h2" style={{ margin: 0 }}>See it on your own data</h2>
+          <h2 className="ab-h2" style={{ margin: 0 }}>{sc.ctaTitle || "See it on your own data"}</h2>
           <Link to="/signup" className="ab-btn">Get Started <span>→</span></Link>
         </div>
       </section>

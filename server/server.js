@@ -40,6 +40,7 @@ const adminLogsRouter      = require("./routes/adminLogs");
 require("./models/AdminLog"); // ensure model is registered
 const paymentRouter    = require("./routes/payment");
 const statsRouter = require("./routes/stats");
+const siteContentRouter = require("./routes/siteContent");
 const resultsRouter = require("./routes/results");
 const companyRouter = require("./routes/company");
 
@@ -80,6 +81,7 @@ app.use(adminPlansRouter);        // GET/POST/PUT/DELETE /admin/plans
 app.use(adminLogsRouter);  // GET /admin/logs
 app.use(paymentRouter);   // POST /payment/create-order, POST /payment/verify
 app.use(statsRouter);          // GET /stats (public)
+app.use(siteContentRouter);   // GET /site-content, PUT /admin/site-content
 app.use(resultsRouter);        // POST /results/email
 app.use(companyRouter);       // GET /company/:symbol, /summary, /history
 

@@ -136,6 +136,7 @@ export default function LandingPage() {
   const [stats, setStats] = useState(null);          // null until /stats responds
   const [plans, setPlans] = useState(FALLBACK_PLANS);
   const [period, setPeriod] = useState("monthly");   // "monthly" | "yearly"
+  const [sc, setSc] = useState({});                  // site content overrides
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +147,10 @@ export default function LandingPage() {
     fetch(apiUrl("/plans"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && Array.isArray(d) && d.length) setPlans(d); })
+      .catch(() => {});
+    fetch(apiUrl("/site-content"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d?.landing) setSc(d.landing); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -219,15 +224,14 @@ export default function LandingPage() {
         <div className="lp-orb lp-orb-b" aria-hidden="true" />
         <motion.div {...fadeUp(0)} className="lp-eyebrow">
           <span className="lp-eyebrow-dot" />
-          Think · Research · Analyse · Invest
+          {sc.heroEyebrow || "Think · Research · Analyse · Invest"}
         </motion.div>
         <motion.h1 {...fadeUp(0.06)} className="lp-title">
-          Rank every company.<br />
-          <span className="lp-grad">With precision.</span>
+          {sc.heroTitle || "Rank every company."}<br />
+          <span className="lp-grad">{sc.heroTitleAccent || "With precision."}</span>
         </motion.h1>
         <motion.p {...fadeUp(0.12)} className="lp-sub">
-          ThinkVest turns raw fundamentals into a defensible, weighted ranking,
-          mapped to your sectors and scored against your KPI templates.
+          {sc.heroSubtitle || "ThinkVest turns raw fundamentals into a defensible, weighted ranking, mapped to your sectors and scored against your KPI templates."}
         </motion.p>
         <motion.div {...fadeUp(0.18)} className="lp-cta">
           <Link to="/signup" className="lp-btn lp-btn-solid lp-btn-lg">
@@ -288,13 +292,16 @@ export default function LandingPage() {
         <motion.h2 {...fadeUp(0.04)} className="lp-h2">From export to ranking<br />in four steps</motion.h2>
         <div className="lp-flow">
           <div className="lp-flow-line" aria-hidden="true" />
-          {WORKFLOW.map((s, i) => (
-            <motion.div key={s.n} {...fadeUp(i * 0.08)} className="lp-flow-card">
-              <div className="lp-flow-n">{s.n}</div>
-              <div className="lp-flow-title">{s.title}</div>
-              <div className="lp-flow-desc">{s.desc}</div>
-            </motion.div>
-          ))}
+          {WORKFLOW.map((s, i) => {
+            const override = sc.workflow?.[i] || {};
+            return (
+              <motion.div key={s.n} {...fadeUp(i * 0.08)} className="lp-flow-card">
+                <div className="lp-flow-n">{s.n}</div>
+                <div className="lp-flow-title">{override.title || s.title}</div>
+                <div className="lp-flow-desc">{override.desc  || s.desc}</div>
+              </motion.div>
+            );
+          })}
         </div>
         <motion.div {...fadeUp(0.1)} className="lp-section-cta">
           <Link to="/demo" className="lp-btn lp-btn-ghost">
@@ -308,13 +315,16 @@ export default function LandingPage() {
         <motion.div {...fadeUp(0)} className="lp-kicker">Capabilities</motion.div>
         <motion.h2 {...fadeUp(0.04)} className="lp-h2">Everything you need to<br />defend a ranking</motion.h2>
         <div className="lp-features">
-          {FEATURES.map((f, i) => (
-            <motion.div key={f.title} {...fadeUp((i % 3) * 0.06)} className="lp-feature">
-              <div className="lp-feature-icon"><Glyph paths={f.icon} /></div>
-              <div className="lp-feature-title">{f.title}</div>
-              <div className="lp-feature-desc">{f.desc}</div>
-            </motion.div>
-          ))}
+          {FEATURES.map((f, i) => {
+            const override = sc.features?.[i] || {};
+            return (
+              <motion.div key={f.title} {...fadeUp((i % 3) * 0.06)} className="lp-feature">
+                <div className="lp-feature-icon"><Glyph paths={f.icon} /></div>
+                <div className="lp-feature-title">{override.title || f.title}</div>
+                <div className="lp-feature-desc">{override.desc  || f.desc}</div>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -459,7 +469,7 @@ export default function LandingPage() {
       <section className="lp-footcta">
         <div className="lp-orb lp-orb-c" aria-hidden="true" />
         <motion.div {...fadeUp(0)} style={{ position: "relative" }}>
-          <h2 className="lp-h2" style={{ marginBottom: 22 }}>Ready to see your rankings?</h2>
+          <h2 className="lp-h2" style={{ marginBottom: 22 }}>{sc.footerCta || "Ready to see your rankings?"}</h2>
           <div className="lp-cta">
             <Link to="/signup" className="lp-btn lp-btn-solid lp-btn-lg">
               {trialDays > 0 ? `Start ${trialDays}-day free trial` : "Get Started"} <span className="lp-btn-arrow">→</span>

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import MarketingNav from "../components/MarketingNav";
 import MarketingFooter from "../components/MarketingFooter";
 import Seo from "../seo";
 import { colors, gradients, fonts, radius, glassCss } from "../theme";
+import { apiUrl } from "../api";
 
 // DemoPage. An auto-playing walkthrough for the public site. Runs fully in the
 // browser (no backend, no login) so the URL can be shared with reviewers.
@@ -276,6 +277,16 @@ function AlsoStrip() {
 }
 
 export default function DemoPage() {
+  const [sc, setSc] = useState({});
+  useEffect(() => {
+    fetch(apiUrl("/site-content"))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.demo) setSc(d.demo); })
+      .catch(() => {});
+  }, []);
+
+  const d = useCallback((key, fallback) => sc[key] || fallback, [sc]);
+
   return (
     <div style={{ color: colors.text, fontFamily: fonts.sans, minHeight: "100vh", overflowX: "hidden" }}>
       <Seo
@@ -291,29 +302,28 @@ export default function DemoPage() {
         <div className="dv-orb dv-orb-a" aria-hidden="true" />
         <div className="dv-orb dv-orb-b" aria-hidden="true" />
         <motion.div {...fadeUp(0)} className="dv-eyebrow">
-          <span className="dv-eyebrow-dot" /> Watch it work, no sign-up
+          <span className="dv-eyebrow-dot" /> {d("heroEyebrow", "Watch it work, no sign-up")}
         </motion.div>
         <motion.h1 {...fadeUp(0.06)} className="dv-title">
-          From 400 stocks to<br /><span className="dv-grad">your top six.</span>
+          {d("heroTitle", "From 400 stocks to")}<br />
+          <span className="dv-grad">{d("heroTitleAccent", "your top six.")}</span>
         </motion.h1>
         <motion.p {...fadeUp(0.12)} className="dv-sub">
-          Filter the market with a plain formula, score every company on the KPIs
-          you trust, and download a ranked report. Here is the real workflow.
+          {d("heroSubtitle", "Filter the market with a plain formula, score every company on the KPIs you trust, and download a ranked report. Here is the real workflow.")}
         </motion.p>
         <motion.div {...fadeUp(0.18)} className="dv-cta">
           <Link to="/signup" className="dv-btn dv-btn-solid">Create free account <span className="dv-arrow">→</span></Link>
           <Link to="/pricing" className="dv-btn dv-btn-ghost">See pricing</Link>
         </motion.div>
-        <motion.p {...fadeUp(0.24)} className="dv-trust">Free for 90 days. No credit card.</motion.p>
+        <motion.p {...fadeUp(0.24)} className="dv-trust">{d("heroTrust", "Free for 90 days. No credit card.")}</motion.p>
       </section>
 
       {/* Step 1: Screener */}
       <section className="dv-section">
         <motion.div {...fadeUp(0)} className="dv-step">Step 1</motion.div>
-        <motion.h2 {...fadeUp(0.04)} className="dv-h2">Screen the whole market</motion.h2>
+        <motion.h2 {...fadeUp(0.04)} className="dv-h2">{d("step1Title", "Screen the whole market")}</motion.h2>
         <motion.p {...fadeUp(0.08)} className="dv-lead">
-          Type a plain formula and the list narrows on the spot. Then run the ranker
-          on exactly the companies that pass.
+          {d("step1Lead", "Type a plain formula and the list narrows on the spot. Then run the ranker on exactly the companies that pass.")}
         </motion.p>
         <motion.div {...fadeUp(0.12)}><ScreenerDemo /></motion.div>
         <motion.div {...fadeUp(0.16)} className="dv-chips">
@@ -327,10 +337,9 @@ export default function DemoPage() {
       {/* Step 2: Pipeline */}
       <section className="dv-section">
         <motion.div {...fadeUp(0)} className="dv-step">Step 2</motion.div>
-        <motion.h2 {...fadeUp(0.04)} className="dv-h2">Score them in one pass</motion.h2>
+        <motion.h2 {...fadeUp(0.04)} className="dv-h2">{d("step2Title", "Score them in one pass")}</motion.h2>
         <motion.p {...fadeUp(0.08)} className="dv-lead">
-          Cleaning, sector mapping and KPI scoring run together on one click. Your
-          weights, your rules. The scoring logic stays on our servers.
+          {d("step2Lead", "Cleaning, sector mapping and KPI scoring run together on one click. Your weights, your rules. The scoring logic stays on our servers.")}
         </motion.p>
         <motion.div {...fadeUp(0.12)}><PipelineDemo /></motion.div>
       </section>
@@ -338,17 +347,16 @@ export default function DemoPage() {
       {/* Step 3: Results */}
       <section className="dv-section dv-section-wide">
         <motion.div {...fadeUp(0)} className="dv-step">Step 3</motion.div>
-        <motion.h2 {...fadeUp(0.04)} className="dv-h2">Get a report you can defend</motion.h2>
+        <motion.h2 {...fadeUp(0.04)} className="dv-h2">{d("step3Title", "Get a report you can defend")}</motion.h2>
         <motion.p {...fadeUp(0.08)} className="dv-lead">
-          Every company gets a score out of 100, built from your weighted KPIs.
-          Green is strong, red is weak, and every rank traces back to a number.
+          {d("step3Lead", "Every company gets a score out of 100, built from your weighted KPIs. Green is strong, red is weak, and every rank traces back to a number.")}
         </motion.p>
         <motion.div {...fadeUp(0.12)}><ResultsDemo /></motion.div>
       </section>
 
       {/* Also included */}
       <section className="dv-section">
-        <motion.h2 {...fadeUp(0)} className="dv-h2" style={{ marginBottom: 34 }}>And once you are in</motion.h2>
+        <motion.h2 {...fadeUp(0)} className="dv-h2" style={{ marginBottom: 34 }}>{d("alsoTitle", "And once you are in")}</motion.h2>
         <AlsoStrip />
       </section>
 
@@ -356,8 +364,8 @@ export default function DemoPage() {
       <section className="dv-footcta">
         <div className="dv-orb dv-orb-c" aria-hidden="true" />
         <motion.div {...fadeUp(0)} style={{ position: "relative" }}>
-          <h2 className="dv-h2" style={{ marginBottom: 12 }}>Rank your own universe today</h2>
-          <p className="dv-sub" style={{ margin: "0 auto 26px" }}>Free for 90 days. No credit card, cancel anytime.</p>
+          <h2 className="dv-h2" style={{ marginBottom: 12 }}>{d("footerCtaTitle", "Rank your own universe today")}</h2>
+          <p className="dv-sub" style={{ margin: "0 auto 26px" }}>{d("footerCtaSub", "Free for 90 days. No credit card, cancel anytime.")}</p>
           <Link to="/signup" className="dv-btn dv-btn-solid dv-btn-lg">Create free account <span className="dv-arrow">→</span></Link>
         </motion.div>
       </section>
