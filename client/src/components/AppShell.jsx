@@ -49,7 +49,6 @@ const Icon = ({ d, paths }) => (
 );
 
 const BASE_NAV = [
-  { to: "/app", end: true, label: "Pipeline", icon: <Icon paths={["M3 3v18h18", "M7 14l4-4 3 3 5-6"]} />, flag: "allowCustomUpload" },
   { to: "/app/screener", label: "Screener", icon: <Icon paths={["M3 6h18", "M3 12h18", "M3 18h18"]} />, flag: "screenerEnabled" },
   { to: "/app/results", label: "Results", icon: <Icon paths={["M4 19V9", "M10 19V5", "M16 19v-7", "M22 19H2"]} /> },
   { to: "/app/comparison", label: "Compare", icon: <Icon paths={["M18 20V10", "M12 20V4", "M6 20v-6"]} />, flag: "comparisonEnabled" },
@@ -107,7 +106,7 @@ export default function AppShell() {
   const NAV = BASE_NAV.filter((item) => !item.flag || appConfig[item.flag] !== false);
   const items = [...NAV, KPI_NAV, PREMIUM_NAV, ...(user?.isAdmin ? [ADMIN_USERS_NAV, ADMIN_PLANS_NAV, ADMIN_LOGS_NAV, ADMIN_CONTENT_NAV, SETTINGS_NAV] : [])];
 
-  const topNav = ["/app", "/app/results", "/app/kpi-editor", "/app/screener", "/app/comparison", "/app/premium", "/app/upgrade", "/app/settings", "/app/account", "/app/admin/users", "/app/admin/plans", "/app/admin/logs", "/app/admin/content"].includes(location.pathname);
+  const topNav = ["/app/results", "/app/kpi-editor", "/app/screener", "/app/comparison", "/app/premium", "/app/upgrade", "/app/settings", "/app/account", "/app/admin/users", "/app/admin/plans", "/app/admin/logs", "/app/admin/content"].includes(location.pathname);
 
   const handleResendVerification = async () => {
     setVerifyError("");
