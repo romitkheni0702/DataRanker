@@ -7,6 +7,34 @@ import { colors, fonts, radius, glassCss, shadow } from "../theme";
 import { useAppConfig } from "../AppConfigContext";
 import FilterInput from "../components/FilterInput";
 
+// ── Column display config ─────────────────────────────────────────────────────
+// Priority order for columns (uses canonical COLUMN_MAPPING keys).
+// Columns not in this list appear after, in their original order.
+const COL_PRIORITY = [
+  "Description", "Symbol", "BSE Code", "ISIN Code",
+  "Current Price", "Market Cap",
+  "P/E Ratio", "P/B Ratio", "PEG Ratio", "Industry PE",
+  "ROE", "ROA", "ROCE", "EBITDA Margin",
+  "PAT", "Net Profit (Q)", "PAT Growth", "PAT Growth 5Y",
+  "Revenue Growth", "Quarter Sales", "YOY Profit Growth (Q)", "YOY Sales Growth (Q)",
+  "Debt/Equity", "Dividend Yield",
+  "Sector", "Industry",
+];
+
+// Further shorten canonical keys where the key itself is still long.
+const DISPLAY_OVERRIDE = {
+  "Description":          "Name",
+  "Quarter Sales":        "Sales (Q)",
+  "YOY Profit Growth (Q)":"PAT Gr (Q)",
+  "YOY Sales Growth (Q)": "Sales Gr (Q)",
+  "PAT Growth 5Y":        "PAT Gr 5Y",
+  "Revenue Growth":       "Rev Growth",
+  "EBITDA Margin":        "EBITDA %",
+  "Dividend Yield":       "Div Yield",
+  "Current Price":        "Price",
+  "Net Profit (Q)":       "PAT (Q)",
+};
+
 // ── Filter DSL ────────────────────────────────────────────────────────────────
 // Supports: "Col > 15 AND Sector = Banks AND Debt/Equity < 1"
 // Returns filtered rows, or null if the expression fails to parse.
@@ -86,7 +114,7 @@ function isNumericValue(v) {
 }
 
 // ── Column Picker ─────────────────────────────────────────────────────────────
-function ColPicker({ allCols, selectedCols, onChange }) {
+function ColPicker({ allCols, selectedCols, onChange, getLabel }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef(null);
@@ -101,7 +129,10 @@ function ColPicker({ allCols, selectedCols, onChange }) {
   }, [open]);
 
   const filtered = search.trim()
-    ? allCols.filter((c) => c.toLowerCase().includes(search.toLowerCase()))
+    ? allCols.filter((c) => {
+        const q = search.toLowerCase();
+        return c.toLowerCase().includes(q) || getLabel(c).toLowerCase().includes(q);
+      })
     : allCols;
 
   const allSelected = selectedCols.size === allCols.length;
@@ -176,7 +207,7 @@ function ColPicker({ allCols, selectedCols, onChange }) {
                   checked={selectedCols.has(col)}
                   onChange={() => toggle(col)}
                 />
-                <span className="cp-label">{col}</span>
+                <span className="cp-label">{getLabel(col)}</span>
               </label>
             ))}
           </div>
@@ -195,6 +226,35 @@ export default function ScreenerPage() {
 
   const [snapshot, setSnapshot] = useState(null);
   const [columnMapping, setColumnMapping] = useState({});
+
+  // alias → canonical key (e.g. "Market Capitalization" → "Market Cap")
+  const reverseMap = useMemo(() => {
+    const m = {};
+    Object.entries(columnMapping).forEach(([canonical, aliases]) => {
+      const list = Array.isArray(aliases) ? aliases : [aliases];
+      list.forEach((a) => { m[a.toLowerCase()] = canonical; });
+      m[canonical.toLowerCase()] = canonical;
+    });
+    return m;
+  }, [columnMapping]);
+
+  // Display-only label: canonical key → short override (or canonical key itself)
+  const getLabel = useCallback((rawCol) => {
+    const canonical = reverseMap[rawCol.toLowerCase()] || rawCol;
+    return DISPLAY_OVERRIDE[canonical] || canonical;
+  }, [reverseMap]);
+
+  // Sort raw column names by COL_PRIORITY; unprioritised columns go at the end
+  const sortByPriority = useCallback((cols) => {
+    return [...cols].sort((a, b) => {
+      const ia = COL_PRIORITY.indexOf(reverseMap[a.toLowerCase()] || a);
+      const ib = COL_PRIORITY.indexOf(reverseMap[b.toLowerCase()] || b);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }, [reverseMap]);
   const [loading, setLoading] = useState(true);
   const [filterExpr, setFilterExpr] = useState("");
   const [filterError, setFilterError] = useState("");
@@ -326,6 +386,16 @@ export default function ScreenerPage() {
   const visibleCols = useMemo(
     () => (snapshot ? snapshot.columns.filter((c) => selectedCols.has(c)) : []),
     [snapshot, selectedCols]
+  );
+
+  // Priority-ordered versions for display (raw keys unchanged — data access still uses these)
+  const orderedAllCols = useMemo(
+    () => (snapshot ? sortByPriority(snapshot.columns) : []),
+    [snapshot, sortByPriority]
+  );
+  const orderedVisibleCols = useMemo(
+    () => sortByPriority(visibleCols),
+    [visibleCols, sortByPriority]
   );
 
   // Determine which visible columns contain numeric data (sample first 20 rows)
@@ -757,9 +827,10 @@ export default function ScreenerPage() {
 
                 <div className="sp-actions">
                   <ColPicker
-                    allCols={snapshot.columns}
+                    allCols={orderedAllCols}
                     selectedCols={selectedCols}
                     onChange={setSelectedCols}
+                    getLabel={getLabel}
                   />
 
                   {/* Download dropdown */}
@@ -839,7 +910,7 @@ export default function ScreenerPage() {
 
             {/* ── Table + pagination ── */}
             <div className="sp-table-section">
-              {visibleCols.length === 0 ? (
+              {orderedVisibleCols.length === 0 ? (
                 <div className="sp-empty">
                   No columns selected - use the Columns picker to show data.
                 </div>
@@ -848,7 +919,7 @@ export default function ScreenerPage() {
                   <table className="sp-table">
                     <thead>
                       <tr>
-                        {visibleCols.map((col) => {
+                        {orderedVisibleCols.map((col) => {
                           const isNum = numericCols.has(col);
                           const isSorted = sortCol === col;
                           return (
@@ -860,7 +931,7 @@ export default function ScreenerPage() {
                               style={isNum ? { textAlign: "right" } : undefined}
                             >
                               <span className="sp-th-inner">
-                                {col}
+                                {getLabel(col)}
                                 <span className="sp-sort-icon">
                                   {isSorted ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
                                 </span>
@@ -873,7 +944,7 @@ export default function ScreenerPage() {
                     <tbody>
                       {pagedRows.map((row, i) => (
                         <tr key={i}>
-                          {visibleCols.map((col) => {
+                          {orderedVisibleCols.map((col) => {
                             const val = row[col];
                             const isNum = numericCols.has(col);
                             return (
@@ -893,7 +964,7 @@ export default function ScreenerPage() {
                 </div>
               )}
 
-              {visibleCols.length > 0 && (
+              {orderedVisibleCols.length > 0 && (
                 <div className="sp-pagination">
                   <span className="sp-page-info">
                     {searchedRows.length === 0
