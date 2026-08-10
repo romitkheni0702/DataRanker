@@ -11,15 +11,18 @@ import FilterInput from "../components/FilterInput";
 // Priority order for columns (uses canonical COLUMN_MAPPING keys).
 // Columns not in this list appear after, in their original order.
 const COL_PRIORITY = [
-  "Description", "Symbol", "BSE Code", "ISIN Code",
+  "Description", "Symbol", "Sector", "Industry", "BSE Code", "ISIN Code",
   "Current Price", "Market Cap",
   "P/E Ratio", "P/B Ratio", "PEG Ratio", "Industry PE",
   "ROE", "ROA", "ROCE", "EBITDA Margin",
   "PAT", "Net Profit (Q)", "PAT Growth", "PAT Growth 5Y",
   "Revenue Growth", "Quarter Sales", "YOY Profit Growth (Q)", "YOY Sales Growth (Q)",
   "Debt/Equity", "Dividend Yield",
-  "Sector", "Industry",
 ];
+
+// Canonical column keys hidden by default (user can re-enable via column picker).
+// Canonical column keys hidden by default (user can re-enable via column picker).
+const DEFAULT_HIDDEN_CANONICAL = new Set(["BSE Code", "ISIN Code", "Industry"]);
 
 // Further shorten canonical keys where the key itself is still long.
 const DISPLAY_OVERRIDE = {
@@ -38,7 +41,10 @@ const DISPLAY_OVERRIDE = {
 // ── Filter DSL ────────────────────────────────────────────────────────────────
 // Supports: "Col > 15 AND Sector = Banks AND Debt/Equity < 1"
 // Returns filtered rows, or null if the expression fails to parse.
-function applyFilter(rows, expr) {
+// colResolutionMap: typed name (lower) → actual raw column key in the data.
+// Allows users to type the short label ("ROE") or the canonical key ("ROE")
+// and still match rows keyed by the original alias ("Return on equity").
+function applyFilter(rows, expr, colResolutionMap = {}) {
   const trimmed = expr.trim();
   if (!trimmed) return rows;
 
@@ -58,7 +64,8 @@ function applyFilter(rows, expr) {
 
   return rows.filter((row) =>
     conditions.every(({ col, op, raw, num, isNum }) => {
-      const cell = row[col];
+      const resolvedCol = colResolutionMap[col.toLowerCase()] || col;
+      const cell = row[resolvedCol];
       if (cell === null || cell === undefined) return op === "!=" ? true : false;
       if (isNum && typeof cell === "number") {
         if (op === ">") return cell > num;
@@ -244,6 +251,26 @@ export default function ScreenerPage() {
     return DISPLAY_OVERRIDE[canonical] || canonical;
   }, [reverseMap]);
 
+  // Maps any name the user might type (raw alias, canonical key, or short label) →
+  // the actual key that exists in snapshot.rows, so applyFilter can resolve it.
+  const colResolutionMap = useMemo(() => {
+    if (!snapshot) return {};
+    const m = {};
+    snapshot.columns.forEach((rawCol) => {
+      m[rawCol.toLowerCase()] = rawCol;
+      m[getLabel(rawCol).toLowerCase()] = rawCol;
+      const canonical = reverseMap[rawCol.toLowerCase()];
+      if (canonical) m[canonical.toLowerCase()] = rawCol;
+    });
+    return m;
+  }, [snapshot, getLabel, reverseMap]);
+
+  // Convenience lookup for FilterInput Stage 3 value suggestions
+  const rawFor = useCallback(
+    (name) => colResolutionMap[name.toLowerCase()] || name,
+    [colResolutionMap]
+  );
+
   // Sort raw column names by COL_PRIORITY; unprioritised columns go at the end
   const sortByPriority = useCallback((cols) => {
     return [...cols].sort((a, b) => {
@@ -282,7 +309,7 @@ export default function ScreenerPage() {
   const [showDownloads, setShowDownloads] = useState(false);
   // Drag-and-drop upload
   const [dragOver, setDragOver] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const fileInputRef = useRef(null);
   const searchRef = useRef(null);
@@ -307,6 +334,29 @@ export default function ScreenerPage() {
     apiFetch("/column-mapping").then(setColumnMapping).catch(() => {});
   }, []);
 
+  // Apply default-hidden columns once both snapshot and reverseMap are ready.
+  // Uses canonical names so it works regardless of the raw alias in the uploaded file.
+  // A ref guards against re-hiding columns the user has manually turned back on.
+  const hiddenDefaultsApplied = useRef(false);
+  const prevSnapshotRef = useRef(null);
+  useEffect(() => {
+    if (!snapshot || !Object.keys(reverseMap).length) return;
+    if (snapshot !== prevSnapshotRef.current) {
+      prevSnapshotRef.current = snapshot;
+      hiddenDefaultsApplied.current = false;
+    }
+    if (hiddenDefaultsApplied.current) return;
+    hiddenDefaultsApplied.current = true;
+    setSelectedCols((prev) => {
+      const next = new Set(prev);
+      snapshot.columns.forEach((col) => {
+        const canonical = reverseMap[col.toLowerCase()] || col;
+        if (DEFAULT_HIDDEN_CANONICAL.has(canonical)) next.delete(col);
+      });
+      return next;
+    });
+  }, [snapshot, reverseMap]);
+
   // Close downloads dropdown on outside click
   useEffect(() => {
     if (!showDownloads) return;
@@ -321,7 +371,7 @@ export default function ScreenerPage() {
   const filteredRows = useMemo(() => {
     if (!snapshot) return [];
     if (!filterExpr.trim()) { setFilterError(""); return snapshot.rows; }
-    const result = applyFilter(snapshot.rows, filterExpr);
+    const result = applyFilter(snapshot.rows, filterExpr, colResolutionMap);
     if (result === null) {
       setFilterError('Invalid query. Example: "ROE > 15 AND Sector = Banks AND Debt/Equity < 1"');
       return snapshot.rows;
@@ -728,6 +778,8 @@ export default function ScreenerPage() {
                       columns={snapshot?.columns ?? []}
                       snapshot={snapshot}
                       history={filterHistory}
+                      getLabel={getLabel}
+                      rawFor={rawFor}
                     />
                     {filterExpr && (
                       <button className="sp-inbar-clear" onClick={() => { setFilterExpr(""); setFilterError(""); }} aria-label="Clear filter">×</button>

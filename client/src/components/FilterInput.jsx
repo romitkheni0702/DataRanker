@@ -20,14 +20,18 @@ function getLastClause(expr) {
   return { prefix: expr.slice(0, idx + 5), clause: expr.slice(idx + 5) };
 }
 
-function computeSuggestions(clause, columns, snapshot) {
+// getLabel: rawCol → display label (injected from ScreenerPage)
+// rawFor:   typed name → actual raw column in the data (for value lookups)
+function computeSuggestions(clause, columns, snapshot, getLabel = (c) => c, rawFor = (c) => c) {
   const trimmed = clause.trimStart();
 
   // Stage 3 - FIELD OP<space>PARTIAL_VALUE
   const opMatch = trimmed.match(/^(.+?)\s+(>=|<=|!=|contains|>|<|=)\s(.*)$/i);
   if (opMatch) {
     const [, fieldRaw, , partial] = opMatch;
-    const col = columns.find((c) => c.toLowerCase() === fieldRaw.trim().toLowerCase());
+    // Accept both raw column name and short label in the typed expression
+    const resolvedRaw = rawFor(fieldRaw.trim());
+    const col = columns.find((c) => c === resolvedRaw || c.toLowerCase() === fieldRaw.trim().toLowerCase());
     if (!col || !snapshot) return [];
     const vals = snapshot.rows.map((r) => r[col]).filter((v) => v != null && String(v).trim() !== "");
     const sample = vals.slice(0, 10);
@@ -52,12 +56,14 @@ function computeSuggestions(clause, columns, snapshot) {
     }));
   }
 
-  // Stage 1 - typing field name
+  // Stage 1 - typing field name; match on raw name OR short label
   const partial = trimmed.toLowerCase();
   const list = partial
-    ? columns.filter((c) => c.toLowerCase().includes(partial))
+    ? columns.filter((c) => c.toLowerCase().includes(partial) || getLabel(c).toLowerCase().includes(partial))
     : columns;
-  return list.slice(0, 10).map((c) => ({ kind: "field", label: c }));
+  // label = short label (inserted into expression); display = same (shown to user)
+  // applyFilter resolves short labels → raw column keys via colResolutionMap
+  return list.slice(0, 10).map((c) => ({ kind: "field", label: getLabel(c), display: getLabel(c) }));
 }
 
 function buildNewExpr(prefix, clause, suggestion) {
@@ -87,6 +93,7 @@ function buildNewExpr(prefix, clause, suggestion) {
 export default function FilterInput({
   value, onChange, columns, snapshot,
   className, placeholder, history = [],
+  getLabel = (c) => c, rawFor = (c) => c,
 }) {
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -99,7 +106,7 @@ export default function FilterInput({
       setSuggestions(history.map(h => ({ kind: "history", label: h })));
     } else {
       const { clause } = getLastClause(value);
-      setSuggestions(computeSuggestions(clause, columns, snapshot));
+      setSuggestions(computeSuggestions(clause, columns, snapshot, getLabel, rawFor));
     }
     setActiveIdx(-1);
   }, [value, columns, snapshot, history]);
@@ -214,7 +221,7 @@ export default function FilterInput({
                   {k.label}
                 </span>
                 <span style={{ fontSize: 13, color: "var(--text)", fontFamily: "monospace" }}>
-                  {s.label}
+                  {s.display || s.label}
                 </span>
               </div>
             );
