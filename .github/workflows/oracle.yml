@@ -1,4 +1,4 @@
-name: Deploy to AWS EC2
+name: Deploy to Oracle Cloud
 
 # Triggers: every push to main, plus a manual "Run workflow" button in GitHub UI.
 on:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to Oracle
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
