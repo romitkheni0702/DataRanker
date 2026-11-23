@@ -12,7 +12,7 @@ coverage/
 build/
 /client/build
 
-# env / secrets — never commit. .env.example IS committed.
+# env / secrets - never commit. .env.example IS committed.
 .env
 .env.local
 .env.development.local
@@ -27,16 +27,13 @@ yarn-error.log*
 __pycache__/
 *.pyc
 
-# Trade secret — never commit or push
+# Trade secret - never commit or push
 LOGIC.md
-
-# Local Claude Code settings (permissions, hooks)
-.claude/
 
 # Nested Next.js + Express rewrite (its own git repo, kept as reference)
 /dataranker
 
-# Large sample Screener export — kept locally as test input, not in the repo
+# Large sample Screener export - kept locally as test input, not in the repo
 /files/query-results.csv
 
 # Admin-uploaded screener snapshots stored on disk (not in repo)

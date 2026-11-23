@@ -195,7 +195,7 @@ function SettingsForm() {
               <input
                 type="text"
                 className="st-text"
-                placeholder="e.g. 🎉 Special launch offer — 30% off yearly plan this week!"
+                placeholder="e.g. 🎉 Special launch offer: 30% off yearly plan this week!"
                 value={form.promoBanner || ""}
                 onChange={(e) => set("promoBanner", e.target.value)}
               />

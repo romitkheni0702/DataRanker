@@ -1,6 +1,6 @@
 // routes/siteContent.js
-// GET /site-content  — public; returns the editable copy for all public pages.
-// PUT /admin/site-content — requireAdmin; replaces landing/demo/about blocks.
+// GET /site-content - public; returns the editable copy for all public pages.
+// PUT /admin/site-content - requireAdmin; replaces landing/demo/about blocks.
 
 const express = require("express");
 const SiteContent = require("../models/SiteContent");

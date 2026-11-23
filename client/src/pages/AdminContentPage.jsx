@@ -175,7 +175,7 @@ function ProductTab({ form, setForm }) {
       <Field label="Gradient line"   value={get("heroTitleAccent")} onChange={v => set("heroTitleAccent", v)} hint="Displayed in the brand gradient colour." />
       <Field label="Subtitle"        value={get("heroSubtitle")}    onChange={v => set("heroSubtitle", v)} multiline />
 
-      <SectionHeader title="How it works — 4 steps" />
+      <SectionHeader title="How it works (4 steps)" />
       {(form.landing?.workflow ?? DEFAULTS.landing.workflow).map((step, i) => (
         <ArrayCard key={i} index={i}>
           <Field label="Title"       value={step.title} onChange={v => setArr("workflow", i, "title", v)} />
@@ -183,7 +183,7 @@ function ProductTab({ form, setForm }) {
         </ArrayCard>
       ))}
 
-      <SectionHeader title="Capabilities — 6 features" />
+      <SectionHeader title="Capabilities (6 features)" />
       {(form.landing?.features ?? DEFAULTS.landing.features).map((feat, i) => (
         <ArrayCard key={i} index={i}>
           <Field label="Title"       value={feat.title} onChange={v => setArr("features", i, "title", v)} />
@@ -210,15 +210,15 @@ function DemoTab({ form, setForm }) {
       <Field label="Subtitle"      value={get("heroSubtitle")}    onChange={v => set("heroSubtitle", v)} multiline />
       <Field label="Trust line"    value={get("heroTrust")}       onChange={v => set("heroTrust", v)} hint='Small line below the CTA buttons, e.g. "Free for 90 days. No credit card."' />
 
-      <SectionHeader title="Step 1 — Screener" />
+      <SectionHeader title="Step 1: Screener" />
       <Field label="Heading"        value={get("step1Title")} onChange={v => set("step1Title", v)} />
       <Field label="Lead paragraph" value={get("step1Lead")}  onChange={v => set("step1Lead",  v)} multiline />
 
-      <SectionHeader title="Step 2 — Pipeline" />
+      <SectionHeader title="Step 2: Pipeline" />
       <Field label="Heading"        value={get("step2Title")} onChange={v => set("step2Title", v)} />
       <Field label="Lead paragraph" value={get("step2Lead")}  onChange={v => set("step2Lead",  v)} multiline />
 
-      <SectionHeader title="Step 3 — Results" />
+      <SectionHeader title="Step 3: Results" />
       <Field label="Heading"        value={get("step3Title")} onChange={v => set("step3Title", v)} />
       <Field label="Lead paragraph" value={get("step3Lead")}  onChange={v => set("step3Lead",  v)} multiline />
 
@@ -246,7 +246,7 @@ function AboutTab({ form, setForm }) {
       <Field label="Gradient line" value={get("heroTitleAccent")} onChange={v => set("heroTitleAccent", v)} hint="Displayed in the brand gradient colour." />
       <Field label="Subtitle"      value={get("heroSubtitle")}    onChange={v => set("heroSubtitle", v)} multiline />
 
-      <SectionHeader title="Stats — 3 tiles" />
+      <SectionHeader title="Stats (3 tiles)" />
       {(form.about?.stats ?? DEFAULTS.about.stats).map((s, i) => (
         <ArrayCard key={i} index={i}>
           <Field label="Key / headline" value={s.k} onChange={v => setArr("stats", i, "k", v)} />

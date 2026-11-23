@@ -165,7 +165,7 @@ function PlanModal({ plan, onSave, onClose }) {
               />
               <span className="apl-hint">
                 {(Number(form.monthlyPrice) === 0 && Number(form.yearlyPrice) === 0)
-                  ? "⚠ Both prices are ₹0 — pricing page will show a \"Contact us\" email link, not this button."
+                  ? "⚠ Both prices are ₹0, so the pricing page will show a \"Contact us\" email link, not this button."
                   : "✓ Shown as the signup button on the pricing page."}
               </span>
             </div>

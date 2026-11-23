@@ -438,7 +438,7 @@ export default function ScreenerPage() {
     [snapshot, selectedCols]
   );
 
-  // Priority-ordered versions for display (raw keys unchanged — data access still uses these)
+  // Priority-ordered versions for display (raw keys unchanged - data access still uses these)
   const orderedAllCols = useMemo(
     () => (snapshot ? sortByPriority(snapshot.columns) : []),
     [snapshot, sortByPriority]

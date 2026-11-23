@@ -1,9 +1,7 @@
 name: Deploy to Oracle Cloud
 
-# Triggers: every push to main, plus a manual "Run workflow" button in GitHub UI.
+# Trigger: manual "Run workflow" button in the GitHub UI (auto-deploy on push disabled; project archived).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -25,7 +23,7 @@ jobs:
             set -e
 
             echo "──────────────────────────────────────"
-            echo " ThinkVest — deploying $(date '+%Y-%m-%d %H:%M:%S')"
+            echo " ThinkVest: deploying $(date '+%Y-%m-%d %H:%M:%S')"
             echo "──────────────────────────────────────"
 
             # ── 1. Pull latest code ─────────────────────────────────────────

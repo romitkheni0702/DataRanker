@@ -219,7 +219,7 @@ function MembershipSection({ user, onUpdate }) {
     ? paidUntil.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
-  // Pricing from plan data — use discounted price when set (> 0).
+  // Pricing from plan data - use discounted price when set (> 0).
   const monthlyPrice           = planData?.monthlyPrice ?? planData?.price ?? null;
   const yearlyPrice            = planData?.yearlyPrice  ?? null;
   const monthlyDiscountedPrice = planData?.monthlyDiscountedPrice > 0 ? planData.monthlyDiscountedPrice : null;

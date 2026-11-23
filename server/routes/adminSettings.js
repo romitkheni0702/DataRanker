@@ -17,7 +17,7 @@ const ALLOWED_KEYS = [
   "promoExpiry",
 ];
 
-// Public — returns active promo banner for the pricing page (no auth needed).
+// Public - returns active promo banner for the pricing page (no auth needed).
 router.get("/promo", async (req, res) => {
   try {
     const s = await AppSettings.getOrCreate();
